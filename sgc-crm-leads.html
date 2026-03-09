@@ -1,0 +1,1928 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGC CRM – Quản lý Lead</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      background: #f3f4f6;
+      overflow: hidden;
+      height: 100vh
+    }
+
+    button {
+      font-family: inherit
+    }
+
+    select,
+    input,
+    textarea {
+      font-family: inherit
+    }
+
+    @keyframes modalIn {
+      from {
+        opacity: 0;
+        transform: scale(0.96) translateY(8px)
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0)
+      }
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 3px
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app" style="display:flex;height:100vh;overflow:hidden"></div>
+
+  <script>
+    // ─── Palettes ────────────────────────────────────────────────────────────────
+    const TEAL = { 50: "#f0fdfa", 100: "#ccfbf1", 200: "#99f6e4", 300: "#5eead4", 400: "#2dd4bf", 500: "#14b8a6", 600: "#0d9488", 700: "#0f766e", 800: "#115e59", 900: "#134e4a" };
+    const SLATE = { 50: "#f8fafc", 100: "#f1f5f9", 200: "#e2e8f0", 300: "#cbd5e1", 400: "#94a3b8", 500: "#64748b", 600: "#475569", 700: "#334155", 800: "#1e293b", 900: "#0f172a" };
+    const BLUE = { 50: "#eff6ff", 100: "#dbeafe", 200: "#bfdbfe", 300: "#93c5fd", 400: "#60a5fa", 500: "#3b82f6", 600: "#2563eb", 700: "#1d4ed8", 800: "#1e40af", 900: "#1e3a8a" };
+
+    // ─── Constants ───────────────────────────────────────────────────────────────
+    const STAGES = [
+      { id: "new", label: "Lead mới", dot: "#5eead4" },
+      { id: "contacted", label: "Đang liên hệ", dot: "#2dd4bf" },
+      { id: "consulting", label: "Đang tư vấn", dot: "#14b8a6" },
+      { id: "closing", label: "Chốt hợp đồng", dot: "#0d9488" },
+      { id: "enrolled", label: "Đã Nhập Học", dot: "#0f766e" },
+    ];
+    const SOURCES = ["Facebook", "Zalo", "Website", "TikTok", "Hotline", "Giới thiệu"];
+    const MAJORS = ["Công nghệ thông tin", "Điều dưỡng", "Kế toán", "Thiết kế đồ họa", "Dược học", "Quản trị kinh doanh", "Kỹ thuật xây dựng"];
+    const ASSIGNEES = ["Minh Tú", "Hồng Nhung", "Văn Nam", "Thu Hà"];
+    const PROVINCES = ["TP. Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Bình Dương", "Đồng Nai"];
+    const FUNNELS = [{ id: "f1", label: "Phễu tháng 1/26", count: 18 }, { id: "f2", label: "Phễu tháng 2/26", count: 43 }];
+    const CAMPAIGNS = [{ id: "c1", label: "Chiến dịch tháng 3" }, { id: "c2", label: "Mùa tuyển sinh 2026" }];
+    const QUALITY_OPTIONS = [
+      { value: "hot", label: "Nóng", color: "#dc2626", bg: "#fff1f0" },
+      { value: "warm", label: "Ấm", color: "#d97706", bg: "#fffbeb" },
+      { value: "cold", label: "Lạnh", color: "#2563eb", bg: "#eff6ff" },
+      { value: "vip", label: "VIP", color: "#7c3aed", bg: "#f5f3ff" },
+      { value: "normal", label: "Bình thường", color: "#6b7280", bg: "#f9fafb" },
+    ];
+    const SOURCE_META = {
+      "Facebook": { color: "#1877f2", bg: "#e7f0fd" },
+      "TikTok": { color: "#010101", bg: "#f3f4f6" },
+      "Zalo": { color: "#0068ff", bg: "#e6f0ff" },
+      "Website": { color: "#16a34a", bg: "#f0fdf4" },
+      "Hotline": { color: "#dc2626", bg: "#fff1f0" },
+      "Giới thiệu": { color: "#7c3aed", bg: "#f5f3ff" },
+    };
+    const CAMP_STAGES = [
+      { id: "new", label: "Lead mới", dot: TEAL[300], bg: TEAL[50] },
+      { id: "contacted", label: "Đã liên hệ", dot: TEAL[400], bg: TEAL[50] },
+      { id: "consulting", label: "Đang tư vấn", dot: TEAL[500], bg: TEAL[50] },
+      { id: "closing", label: "Nộp hồ sơ", dot: TEAL[700], bg: TEAL[100] },
+      { id: "enrolled", label: "Nhập học", dot: TEAL[900], bg: TEAL[100] },
+    ];
+    const CAMP_SOURCES = [
+      { id: "fb", label: "Facebook Ads", color: "#1877f2", bg: "#e7f0fd", leads: 42, qualified: 28, contacted: 88, converted: 21, cpl: 125000 },
+      { id: "gg", label: "Google Ads", color: "#ea4335", bg: "#fce8e6", leads: 35, qualified: 22, contacted: 82, converted: 17, cpl: 180000 },
+      { id: "tt", label: "TikTok", color: "#010101", bg: "#f3f4f6", leads: 58, qualified: 31, contacted: 79, converted: 14, cpl: 95000 },
+      { id: "web", label: "Website", color: "#16a34a", bg: "#f0fdf4", leads: 27, qualified: 19, contacted: 91, converted: 26, cpl: 0 },
+      { id: "zalo", label: "Zalo", color: "#0068ff", bg: "#e6f0ff", leads: 33, qualified: 20, contacted: 85, converted: 18, cpl: 60000 },
+      { id: "offline", label: "Offline Event", color: "#d97706", bg: "#fffbeb", leads: 19, qualified: 15, contacted: 94, converted: 32, cpl: 210000 },
+      { id: "ref", label: "Referral", color: "#7c3aed", bg: "#f5f3ff", leads: 14, qualified: 12, contacted: 96, converted: 36, cpl: 0 },
+    ];
+    const AUTO_FLOWS = [
+      { id: 1, trigger: "Lead mới vào chiến dịch", action: "Auto assign nhân viên", delay: "Ngay lập tức", status: "active" },
+      { id: 2, trigger: "Sau 10 phút từ khi tạo lead", action: "Gửi SMS chào mừng", delay: "10 phút", status: "active" },
+      { id: 3, trigger: "24h chưa được liên hệ", action: "Tạo task follow-up cho NV", delay: "24 giờ", status: "active" },
+      { id: 4, trigger: "Lead score ≥ 80 điểm", action: "Ưu tiên hàng đầu + Alert NV", delay: "Ngay lập tức", status: "active" },
+      { id: 5, trigger: "Không phản hồi sau 3 ngày", action: "Chuyển sang remarketing list", delay: "3 ngày", status: "paused" },
+    ];
+    const CAMP_LEADS = [
+      { id: 101, name: "Nguyễn Minh Anh", phone: "0901111001", source: "fb", status: "new", score: 82, assignee: "Minh Tú", expectedRevenue: 18000000 },
+      { id: 102, name: "Trần Thị Bảo", phone: "0902222002", source: "gg", status: "contacted", score: 65, assignee: "Hồng Nhung", expectedRevenue: 14000000 },
+      { id: 103, name: "Lê Văn Cường", phone: "0903333003", source: "tt", status: "consulting", score: 74, assignee: "Văn Nam", expectedRevenue: 16000000 },
+      { id: 104, name: "Phạm Thu Dung", phone: "0904444004", source: "zalo", status: "closing", score: 91, assignee: "Minh Tú", expectedRevenue: 22000000 },
+      { id: 105, name: "Hoàng Văn Em", phone: "0905555005", source: "web", status: "enrolled", score: 88, assignee: "Thu Hà", expectedRevenue: 20000000 },
+      { id: 106, name: "Vũ Thị Phương", phone: "0906666006", source: "fb", status: "new", score: 55, assignee: "Văn Nam", expectedRevenue: 12000000 },
+      { id: 107, name: "Đặng Minh Quân", phone: "0907777007", source: "offline", status: "contacted", score: 79, assignee: "Hồng Nhung", expectedRevenue: 15000000 },
+      { id: 108, name: "Bùi Thị Hương", phone: "0908888008", source: "ref", status: "consulting", score: 93, assignee: "Minh Tú", expectedRevenue: 25000000 },
+      { id: 109, name: "Ngô Văn Khoa", phone: "0909999009", source: "tt", status: "new", score: 61, assignee: "", expectedRevenue: 10000000 },
+      { id: 110, name: "Phan Thị Liên", phone: "0910000010", source: "gg", status: "closing", score: 84, assignee: "Thu Hà", expectedRevenue: 21000000 },
+      { id: 111, name: "Đinh Quang Minh", phone: "0911111011", source: "zalo", status: "new", score: 70, assignee: "Văn Nam", expectedRevenue: 13000000 },
+      { id: 112, name: "Cao Thị Nga", phone: "0912222012", source: "web", status: "contacted", score: 58, assignee: "Hồng Nhung", expectedRevenue: 11000000 },
+      { id: 113, name: "Trịnh Văn Ổn", phone: "0913333013", source: "fb", status: "consulting", score: 77, assignee: "Minh Tú", expectedRevenue: 17000000 },
+      { id: 114, name: "Lưu Thị Phúc", phone: "0914444014", source: "ref", status: "enrolled", score: 95, assignee: "Thu Hà", expectedRevenue: 24000000 },
+      { id: 115, name: "Võ Minh Quang", phone: "0915555015", source: "offline", status: "new", score: 67, assignee: "", expectedRevenue: 9000000 },
+    ];
+    const ADM_MAJORS = [
+      { id: "cntt", label: "Công nghệ thông tin", leads: 148, interest: 72, applied: 54, enrolled: 41 },
+      { id: "mkt", label: "Marketing", leads: 124, interest: 68, applied: 49, enrolled: 36 },
+      { id: "thiet", label: "Thiết kế đồ họa", leads: 97, interest: 61, applied: 42, enrolled: 29 },
+      { id: "qtkd", label: "Quản trị kinh doanh", leads: 115, interest: 65, applied: 46, enrolled: 33 },
+      { id: "dulich", label: "Du lịch – Nhà hàng", leads: 83, interest: 58, applied: 38, enrolled: 24 },
+    ];
+    const ADM_PROVINCES = [
+      { id: "hcm", label: "TP.HCM", leads: 312, applied: 142, enrolled: 98 },
+      { id: "dn", label: "Đồng Nai", leads: 124, applied: 56, enrolled: 38 },
+      { id: "bd", label: "Bình Dương", leads: 98, applied: 44, enrolled: 29 },
+      { id: "mw", label: "Miền Tây", leads: 87, applied: 36, enrolled: 21 },
+      { id: "mc", label: "Miền Trung", leads: 54, applied: 20, enrolled: 11 },
+    ];
+    const ADM_COUNSELORS = [
+      { name: "Minh Tú", leads: 124, files: 68, enrolled: 47, rate: 38 },
+      { name: "Thu Hà", leads: 108, files: 59, enrolled: 41, rate: 38 },
+      { name: "Hồng Nhung", leads: 97, files: 51, enrolled: 34, rate: 35 },
+      { name: "Văn Nam", leads: 88, files: 44, enrolled: 28, rate: 32 },
+    ];
+    const ADM_FLOWS = [
+      { id: 1, trigger: "Lead mới", action: "Gửi email giới thiệu trường", delay: "Ngay lập tức", status: "active" },
+      { id: 2, trigger: "Lead quan tâm ngành", action: "Gửi brochure ngành học", delay: "Trong 1h", status: "active" },
+      { id: 3, trigger: "Chưa nộp hồ sơ sau 7 ngày", action: "Nhắc nhở nộp hồ sơ", delay: "7 ngày", status: "active" },
+      { id: 4, trigger: "Lead đã nộp hồ sơ", action: "Gửi hướng dẫn đóng học phí", delay: "Ngay lập tức", status: "active" },
+      { id: 5, trigger: "Lead đóng học phí", action: "Chuyển sang hệ thống Student", delay: "Ngay lập tức", status: "active" },
+    ];
+    const ADM_ALERTS = [
+      { id: 1, type: "danger", label: "Lead chưa liên hệ > 24h", count: 18 },
+      { id: 2, type: "warn", label: "Lead chất lượng chưa được tư vấn", count: 12 },
+      { id: 3, type: "info", label: "Chiến dịch TikTok có tỷ lệ chuyển đổi thấp", count: 1 },
+      { id: 4, type: "warn", label: "Hồ sơ chờ duyệt quá 48h", count: 7 },
+    ];
+    const ALERT_LEADS = {
+      1: [
+        { id: 201, name: "Lê Hoàng Phát", phone: "0911200001", major: "CNTT", source: "fb", hours: 38, assignee: "Văn Nam", score: 72 },
+        { id: 202, name: "Trần Minh Khánh", phone: "0911200002", major: "Marketing", source: "tt", hours: 31, assignee: "Hồng Nhung", score: 65 },
+        { id: 203, name: "Nguyễn Thu Trang", phone: "0911200003", major: "Thiết kế", source: "web", hours: 27, assignee: "Văn Nam", score: 80 },
+        { id: 204, name: "Phạm Văn Đức", phone: "0911200004", major: "QTKD", source: "zalo", hours: 25, assignee: "", score: 58 },
+        { id: 205, name: "Vũ Thị Ngọc", phone: "0911200005", major: "Du lịch", source: "ref", hours: 41, assignee: "Thu Hà", score: 69 },
+      ],
+      2: [
+        { id: 211, name: "Bùi Quang Huy", phone: "0922300001", major: "CNTT", source: "fb", score: 88, assignee: "", lastAction: "Đăng ký form" },
+        { id: 212, name: "Đinh Thị Lan", phone: "0922300002", major: "Marketing", source: "gg", score: 85, assignee: "", lastAction: "Xem brochure" },
+        { id: 213, name: "Cao Minh Trí", phone: "0922300003", major: "CNTT", source: "ref", score: 91, assignee: "", lastAction: "Gọi vào hotline" },
+        { id: 214, name: "Lý Thị Hồng", phone: "0922300004", major: "Thiết kế", source: "web", score: 83, assignee: "Minh Tú", lastAction: "Chat Zalo" },
+        { id: 215, name: "Phan Thanh Bình", phone: "0922300005", major: "QTKD", source: "tt", score: 79, assignee: "", lastAction: "Click quảng cáo" },
+      ],
+      3: [
+        { id: "c_tt", label: "TikTok Ads tháng 3", leads: 58, converted: 14, rate: "24%", budget: 5510000, cpl: 95000 },
+        { id: "c_gg", label: "Google Ads retargeting", leads: 35, converted: 17, rate: "49%", budget: 6300000, cpl: 180000 },
+      ],
+      4: [
+        { id: 221, name: "Hoàng Thị Mai", phone: "0933400001", major: "CNTT", submitted: "05/03", waitHours: 58, assignee: "Minh Tú" },
+        { id: 222, name: "Ngô Quốc Toản", phone: "0933400002", major: "Marketing", submitted: "04/03", waitHours: 72, assignee: "Thu Hà" },
+        { id: 223, name: "Trần Hữu Nghĩa", phone: "0933400003", major: "QTKD", submitted: "05/03", waitHours: 53, assignee: "Hồng Nhung" },
+        { id: 224, name: "Lê Thị Quỳnh", phone: "0933400004", major: "Du lịch", submitted: "04/03", waitHours: 68, assignee: "Văn Nam" },
+        { id: 225, name: "Bùi Ngọc Anh", phone: "0933400005", major: "Thiết kế", submitted: "05/03", waitHours: 51, assignee: "Minh Tú" },
+        { id: 226, name: "Đoàn Văn Tùng", phone: "0933400006", major: "CNTT", submitted: "03/03", waitHours: 84, assignee: "Thu Hà" },
+        { id: 227, name: "Vương Thị Hà", phone: "0933400007", major: "Marketing", submitted: "04/03", waitHours: 61, assignee: "Văn Nam" },
+      ],
+    };
+
+    let _seq = 100;
+    const mkId = () => `LEAD-${++_seq}`;
+    const fmt = n => n ? (n.toLocaleString("vi-VN") + " ₫") : "0 ₫";
+    const vnd = n => (n || 0).toLocaleString("vi-VN") + " ₫";
+
+    // ─── Application State ────────────────────────────────────────────────────────
+    const state = {
+      leads: [
+        { id: 1, code: "LEAD-001", name: "Nguyễn Thị Lan", phone: "0901234567", email: "lan.nt@gmail.com", gender: "Nữ", address: "", province: "TP. Hồ Chí Minh", source: "Facebook", status: "contacted", major: "Công nghệ thông tin", school: "THPT Lê Hồng Phong", score: 85, assignee: "Minh Tú", createdAt: "09:19 03/02/2026", notes: [], tags: ["Hành Test"], expectedRevenue: 15000000, revenue: 0, orders: 0, rfm: 0, membership: "-" },
+        { id: 2, code: "LEAD-002", name: "Trần Văn Hùng", phone: "0912345678", email: "hung.tv@gmail.com", gender: "Nam", address: "", province: "Bình Dương", source: "TikTok", status: "contacted", major: "Kế toán", school: "THPT Nguyễn Hữu Huân", score: 72, assignee: "Hồng Nhung", createdAt: "09:24 03/02/2026", notes: [], tags: ["Hành Test"], expectedRevenue: 12000000, revenue: 0, orders: 0, rfm: 0, membership: "-" },
+        { id: 3, code: "LEAD-003", name: "Lê Thị Hoa", phone: "0923456789", email: "hoa.lt@gmail.com", gender: "Nữ", address: "", province: "TP. Hồ Chí Minh", source: "Website", status: "contacted", major: "Điều dưỡng", school: "THPT Võ Thị Sáu", score: 45, assignee: "Văn Nam", createdAt: "10:19 03/02/2026", notes: [], tags: ["Hành Test"], expectedRevenue: 8000000, revenue: 0, orders: 0, rfm: 0, membership: "-" },
+        { id: 4, code: "LEAD-004", name: "Phạm Minh Đức", phone: "0934567890", email: "duc.pm@gmail.com", gender: "Nam", address: "", province: "Đà Nẵng", source: "Hotline", status: "contacted", major: "Thiết kế đồ họa", school: "THPT Trần Phú", score: 91, assignee: "Minh Tú", createdAt: "10:41 03/02/2026", notes: [], tags: ["Hành Test"], expectedRevenue: 18000000, revenue: 0, orders: 0, rfm: 0, membership: "-" },
+        { id: 5, code: "LEAD-005", name: "Hoàng Thị Mai", phone: "0945678901", email: "mai.ht@gmail.com", gender: "Nữ", address: "", province: "TP. Hồ Chí Minh", source: "Zalo", status: "new", major: "Quản trị kinh doanh", school: "THPT Gia Định", score: 68, assignee: "Hồng Nhung", createdAt: "09:17 03/02/2026", notes: [], tags: ["Hành Test"], expectedRevenue: 14000000, revenue: 0, orders: 0, rfm: 0, membership: "-" },
+        { id: 6, code: "LEAD-006", name: "Vũ Quang Tuấn", phone: "0956789012", email: "tuan.vq@gmail.com", gender: "Nam", address: "", province: "TP. Hồ Chí Minh", source: "Facebook", status: "new", major: "Công nghệ thông tin", school: "THPT Bình Phú", score: 88, assignee: "Văn Nam", createdAt: "09:09 03/02/2026", notes: [], tags: ["Hành Test", "Dzu"], expectedRevenue: 16000000, revenue: 0, orders: 0, rfm: 0, membership: "-" },
+        { id: 7, code: "LEAD-007", name: "Đặng Thị Thu", phone: "0967890123", email: "thu.dt@gmail.com", gender: "Nữ", address: "", province: "Đồng Nai", source: "Facebook", status: "new", major: "Dược học", school: "THPT Chu Văn An", score: 75, assignee: "Minh Tú", createdAt: "09:02 03/02/2026", notes: [], tags: ["Dzu"], expectedRevenue: 20000000, revenue: 0, orders: 0, rfm: 0, membership: "-" },
+        { id: 8, code: "LEAD-008", name: "Bùi Văn Long", phone: "0978901234", email: "long.bv@gmail.com", gender: "Nam", address: "", province: "TP. Hồ Chí Minh", source: "TikTok", status: "new", major: "Kỹ thuật xây dựng", school: "THPT An Lạc", score: 93, assignee: "Hồng Nhung", createdAt: "09:34 03/02/2026", notes: [], tags: ["Hành Test"], expectedRevenue: 22000000, revenue: 0, orders: 0, rfm: 0, membership: "-" },
+        { id: 9, code: "LEAD-009", name: "Ngô Thị Kiều", phone: "0989012345", email: "kieu.nt@gmail.com", gender: "Nữ", address: "", province: "Bình Dương", source: "Hotline", status: "new", major: "Điều dưỡng", school: "THPT Lê Quý Đôn", score: 62, assignee: "", createdAt: "09:35 03/02/2026", notes: [], tags: ["Hành Test"], expectedRevenue: 10000000, revenue: 0, orders: 0, rfm: 0, membership: "-" },
+        { id: 10, code: "LEAD-010", name: "Phan Thanh Khoa", phone: "0990123456", email: "khoa.pt@gmail.com", gender: "Nam", address: "", province: "TP. Hồ Chí Minh", source: "Giới thiệu", status: "consulting", major: "Công nghệ thông tin", school: "THPT Nguyễn Thượng Hiền", score: 79, assignee: "Minh Tú", createdAt: "09:01 03/02/2026", notes: [], tags: ["Hành Test"], expectedRevenue: 17000000, revenue: 0, orders: 0, rfm: 0, membership: "-" },
+        { id: 11, code: "LEAD-011", name: "Đinh Thị Nga", phone: "0901111222", email: "nga.dt@gmail.com", gender: "Nữ", address: "", province: "Đà Nẵng", source: "Zalo", status: "consulting", major: "Kế toán", school: "THPT Lý Thường Kiệt", score: 80, assignee: "Hồng Nhung", createdAt: "09:18 03/02/2026", notes: [], tags: ["Hành Test"], expectedRevenue: 13000000, revenue: 0, orders: 0, rfm: 0, membership: "-" },
+        { id: 12, code: "LEAD-012", name: "Cao Văn Bình", phone: "0902222333", email: "binh.cv@gmail.com", gender: "Nam", address: "", province: "TP. Hồ Chí Minh", source: "Website", status: "consulting", major: "Thiết kế đồ họa", school: "THPT Trưng Vương", score: 66, assignee: "", createdAt: "11:46 10/02/2026", notes: [], tags: [], expectedRevenue: 11000000, revenue: 0, orders: 0, rfm: 0, membership: "-" },
+        { id: 13, code: "LEAD-013", name: "Trịnh Minh Quân", phone: "0903333444", email: "quan.tm@gmail.com", gender: "Nam", address: "", province: "Đồng Nai", source: "Facebook", status: "consulting", major: "Điều dưỡng", school: "THPT Gia Định", score: 71, assignee: "Minh Tú", createdAt: "17:24 03/02/2026", notes: [], tags: ["Hành Test"], expectedRevenue: 9000000, revenue: 0, orders: 0, rfm: 0, membership: "-" },
+        { id: 14, code: "LEAD-014", name: "Lưu Thị Kim", phone: "0904444555", email: "kim.lt@gmail.com", gender: "Nữ", address: "", province: "Bình Dương", source: "TikTok", status: "consulting", major: "Dược học", school: "THPT Nguyễn Hữu Cảnh", score: 58, assignee: "", createdAt: "09:36 03/02/2026", notes: [], tags: ["Dzu"], expectedRevenue: 19000000, revenue: 0, orders: 0, rfm: 0, membership: "-" },
+        { id: 15, code: "LEAD-015", name: "Võ Hoàng Nam", phone: "0905555666", email: "nam.vh@gmail.com", gender: "Nam", address: "", province: "TP. Hồ Chí Minh", source: "Hotline", status: "closing", major: "Quản trị kinh doanh", school: "THPT Bình Chánh", score: 84, assignee: "Văn Nam", createdAt: "09:37 03/02/2026", notes: [], tags: ["Dzu"], expectedRevenue: 25000000, revenue: 5200000, orders: 1, rfm: 2, membership: "Bạc" },
+        { id: 16, code: "LEAD-016", name: "Hồ Thị Linh", phone: "0906666777", email: "linh.ht@gmail.com", gender: "Nữ", address: "", province: "Đà Nẵng", source: "Facebook", status: "closing", major: "Kỹ thuật xây dựng", school: "THPT Phú Nhuận", score: 77, assignee: "Minh Tú", createdAt: "09:40 03/02/2026", notes: [], tags: ["Dzu"], expectedRevenue: 21000000, revenue: 0, orders: 0, rfm: 0, membership: "-" },
+        { id: 17, code: "LEAD-017", name: "Dương Văn Toàn", phone: "0907777888", email: "toan.dv@gmail.com", gender: "Nam", address: "", province: "TP. Hồ Chí Minh", source: "Zalo", status: "closing", major: "Công nghệ thông tin", school: "THPT Tân Bình", score: 89, assignee: "Hồng Nhung", createdAt: "09:47 03/02/2026", notes: [], tags: ["Hành Test"], expectedRevenue: 23000000, revenue: 0, orders: 0, rfm: 0, membership: "-" },
+      ],
+      search: "",
+      selectedLead: null,
+      showAddModal: false,
+      activeFunnel: "f1",
+      activeSidebar: "leads",
+      activeLeadView: "all",
+      viewMode: "kanban",
+      dragId: null,
+      dragOverStage: null,
+      campLeads: CAMP_LEADS.map(l => ({ ...l })),
+      campDragId: null,
+      campDragOver: null,
+      campTab: "overview",
+      campFlows: AUTO_FLOWS.map(f => ({ ...f })),
+      campFilterAssignee: "all",
+      campFilterSource: "all",
+      admTab: "overview",
+      admFlows: ADM_FLOWS.map(f => ({ ...f })),
+      leftLeadsOpen: true,
+      leftPipelineOpen: true,
+      leftCampaignOpen: false,
+      modalTab: "customer",
+      modalRightTab: "info",
+      modalForm: null,
+      modalNotes: [],
+      modalTasks: [],
+      modalNewNote: "",
+      modalNewTask: "",
+      newLead: { name: "", phone: "", email: "", source: "Facebook", major: "Công nghệ thông tin", school: "", gender: "Khác", province: "", address: "", assignee: "Minh Tú", expectedRevenue: "" },
+      openAlert: null,
+      resolvedAlerts: [],
+      alertResolvedItems: [],
+      alertSelected: [],
+      alertAssignTo: "",
+      alertNote: "",
+      qualityOpenFor: null,
+      sourceOpenFor: null,
+    };
+
+    // ─── SVG helpers ─────────────────────────────────────────────────────────────
+    const svg = {
+      phone: (c = "#6b7280", s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.38 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.39 17z"/></svg>`,
+      check: (c = "#6b7280", s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+      user: (c = "#6b7280", s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>`,
+      msg: (c = "#6b7280", s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+      doc: (c = "#6b7280", s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,
+      coin: (c = "#6b7280", s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v2m0 8v2M9.5 9.5A2.5 2.5 0 0 1 12 8a2.5 2.5 0 0 1 0 5"/></svg>`,
+      target: (c = "#6b7280", s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`,
+      arrow: (c = "#6b7280", s = 10) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>`,
+      refresh: (c = "#6b7280", s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.61"/></svg>`,
+      users: (c = "#6b7280", s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+      star: (c = "#6b7280", s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+      grad: (c = "#6b7280", s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>`,
+      bell: (c = "#6b7280", s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
+      trophy: (c = "#6b7280", s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><polyline points="8 21 12 21 16 21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M7 4H4a2 2 0 0 0-2 2v3a4 4 0 0 0 4 4h.5"/><path d="M17 4h3a2 2 0 0 1 2 2v3a4 4 0 0 1-4 4h-.5"/><path d="M7 4h10v8a5 5 0 0 1-10 0V4z"/></svg>`,
+      email: (c = "#6b7280", s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`,
+      map: (c = "#6b7280", s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>`,
+      search: (c = "#bbb", s = 11) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+      filter: (c = "#6b7280", s = 11) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>`,
+      funnel: (c = "#6b7280", s = 11) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>`,
+      x: (c = "#9ca3af", s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+      chevDown: (c = "#9ca3af", s = 9) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>`,
+      kanban: (c = "#888", s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><rect x="2" y="2" width="5" height="20" rx="1"/><rect x="9.5" y="2" width="5" height="14" rx="1"/><rect x="17" y="2" width="5" height="17" rx="1"/></svg>`,
+      table: (c = "#888", s = 12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="1"/><line x1="2" y1="9" x2="22" y2="9"/><line x1="2" y1="15" x2="22" y2="15"/><line x1="8" y1="9" x2="8" y2="21"/></svg>`,
+      leads: (c = "currentColor", s = 14) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="14" y2="13"/></svg>`,
+      dashboard: (c = "currentColor", s = 14) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
+      settings: (c = "currentColor", s = 14) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+      profile: (c = "currentColor", s = 14) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>`,
+      eye: (c = "#6b7280", s = 11) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
+      pencil: (c = "#9ca3af", s = 10) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+    };
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────────
+    function avatar(name, size = 32) {
+      const init = (name || "?").trim().split(" ").pop()[0].toUpperCase();
+      return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:#9ca3af;display:flex;align-items:center;justify-content:center;color:#fff;font-size:${Math.round(size * 0.38)}px;font-weight:700;flex-shrink:0;border:1.5px solid #d1d5db">${init}</div>`;
+    }
+    function tagBadge(label) {
+      const M = { "Hành Test": { bg: "#dbeafe", color: "#1d4ed8", border: "#bfdbfe" }, "Dzu": { bg: "#fef9c3", color: "#854d0e", border: "#fde68a" } };
+      const s = M[label] || { bg: "#f3f4f6", color: "#374151", border: "#e5e7eb" };
+      return `<span style="padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;background:${s.bg};color:${s.color};border:1px solid ${s.border};display:inline-flex;align-items:center;gap:2px"><span style="font-size:7px">▼</span>${label}</span>`;
+    }
+    function minibar(pct, color) {
+      return `<div style="height:5px;background:#e5e7eb;border-radius:3px;overflow:hidden;flex:1"><div style="height:100%;width:${Math.min(pct, 100)}%;background:${color};border-radius:3px;transition:width .4s"></div></div>`;
+    }
+    function admbar(pct, color, h = 5) {
+      return `<div style="height:${h}px;background:${SLATE[100]};border-radius:3px;overflow:hidden;flex:1"><div style="height:100%;width:${Math.min(pct, 100)}%;background:${color};border-radius:3px;transition:width .4s"></div></div>`;
+    }
+
+    // ─── Derived getters ──────────────────────────────────────────────────────────
+    function getFiltered() {
+      const base = state.activeLeadView === "unassigned" ? getUnassigned() : state.leads;
+      if (!state.search) return base;
+      const q = state.search.toLowerCase();
+      return base.filter(l => l.name.toLowerCase().includes(q) || l.phone.includes(q) || l.code.toLowerCase().includes(q));
+    }
+    function getUnassigned() { return state.leads.filter(l => !l.assignee || l.assignee === "") }
+    function byStage(id) { return getFiltered().filter(l => l.status === id) }
+    function stageTotal(id) { return getFiltered().filter(l => l.status === id).reduce((s, l) => s + (l.expectedRevenue || 0), 0) }
+    function grandTotal() { return state.leads.reduce((s, l) => s + (l.expectedRevenue || 0), 0) }
+
+    // ─── Render engine ────────────────────────────────────────────────────────────
+    function render() {
+      document.getElementById("app").innerHTML = renderApp();
+      bindEvents();
+    }
+
+    function renderApp() {
+      return `
+  <div style="display:flex;height:100vh;background:#f3f4f6;font-family:'Inter','Segoe UI',system-ui,sans-serif;overflow:hidden">
+    ${renderSidebar()}
+    ${renderLeftPanel()}
+    ${renderMain()}
+    ${state.selectedLead ? renderLeadModal() : ""}
+    ${state.showAddModal ? renderAddModal() : ""}
+    ${state.openAlert ? renderAlertPanel() : ""}
+  </div>`;
+    }
+
+    // ─── Sidebar ─────────────────────────────────────────────────────────────────
+    function renderSidebar() {
+      const items = [
+        { id: "filter", icon: svg.filter() },
+        { id: "leads", icon: svg.leads() },
+        { id: "profile", icon: svg.profile() },
+        { id: "dashboard", icon: svg.dashboard() },
+        { id: "settings", icon: svg.settings() },
+      ];
+      return `<div style="width:44px;background:#1e2535;display:flex;flex-direction:column;align-items:center;padding-top:10px;gap:2px;flex-shrink:0">
+    <div style="width:26px;height:26px;border-radius:6px;background:#e8333a;display:flex;align-items:center;justify-content:center;margin-bottom:14px;color:#fff;font-weight:800;font-size:12px">S</div>
+    ${items.map(it => `<button data-sidebar="${it.id}" style="width:32px;height:32px;border-radius:6px;border:none;cursor:pointer;background:${state.activeSidebar === it.id ? "rgba(255,255,255,0.13)" : "transparent"};color:${state.activeSidebar === it.id ? "#fff" : "#5a6680"};display:flex;align-items:center;justify-content:center;margin-bottom:2px">${it.icon}</button>`).join("")}
+    <div style="flex:1"></div>
+    <div style="width:26px;height:26px;border-radius:50%;background:#323d52;margin-bottom:10px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#888">A</div>
+  </div>`;
+    }
+
+    // ─── Left Panel ───────────────────────────────────────────────────────────────
+    function renderLeftPanel() {
+      const unassignedCount = getUnassigned().length;
+      const sec = (label, open, toggleKey, content) => `
+    <div style="margin-bottom:2px">
+      <div data-toggle="${toggleKey}" style="padding:6px 12px;display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11.5px;font-weight:600;color:#374151">
+        <span style="font-size:8px;color:#aaa">${open ? "▼" : "▶"}</span>${label}
+      </div>
+      ${open ? content : ""}
+    </div>`;
+      const navItem = (id, label, count, urgent) => {
+        const active = state.activeLeadView === id;
+        return `<div data-nav="${id}" style="padding:5px 10px 5px 22px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-size:11.5px;color:${active ? "#e8333a" : "#555"};background:${active ? "#fff5f5" : "transparent"};border-left:2px solid ${active ? "#e8333a" : "transparent"};border-radius:0 4px 4px 0">
+      <span style="font-weight:${active ? 600 : 400}">${label}</span>
+      <span style="background:${urgent ? "#fee2e2" : "#f3f4f6"};border-radius:8px;padding:0 5px;font-size:10px;color:${urgent ? "#dc2626" : "#777"};font-weight:${urgent ? 700 : 400}">${count}</span>
+    </div>`;
+      };
+      const funnelItems = FUNNELS.map(f => {
+        const active = state.activeFunnel === f.id && state.activeLeadView === "funnel";
+        return `<div data-funnel="${f.id}" style="margin:2px 6px;padding:5px 8px;border-radius:5px;cursor:pointer;background:${active ? "#fff0f0" : "transparent"};border:1px solid ${active ? "#fecaca" : "transparent"};display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:11.5px;font-weight:600;color:${active ? "#e8333a" : "#444"}">${f.label}</div>
+        <div style="font-size:10px;color:#aaa">${f.count} leads</div>
+      </div>
+    </div>`;
+      }).join("");
+      const campaignItems = CAMPAIGNS.map(c => {
+        const active = state.activeLeadView === "campaign_" + c.id;
+        return `<div data-campaign="${c.id}" style="margin:2px 6px;padding:5px 8px;border-radius:5px;cursor:pointer;background:${active ? "#fff0f0" : "transparent"};border:1px solid ${active ? "#fecaca" : "transparent"};font-size:11.5px;font-weight:${active ? 600 : 400};color:${active ? "#e8333a" : "#555"};border-left:${active ? "2px solid #e8333a" : "2px solid transparent"}">${c.label}</div>`;
+      }).join("");
+      return `<div style="width:192px;background:#fff;border-right:1px solid #e8eaed;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto">
+    <div style="padding:7px 10px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;gap:6px">
+      <div style="position:relative;flex:1">
+        <select style="width:100%;padding:3px 20px 3px 7px;border:1px solid #e5e7eb;border-radius:5px;font-size:11px;color:#374151;outline:none;background:#fff;appearance:none;cursor:pointer">
+          <option>Tất cả chi nhánh</option><option>CS Quận 1</option><option>CS Quận 3</option><option>CS Quận 7</option>
+        </select>
+        <span style="position:absolute;right:5px;top:50%;transform:translateY(-50%);pointer-events:none">${svg.chevDown()}</span>
+      </div>
+      <span style="font-size:10.5px;color:#6b7280;cursor:pointer;white-space:nowrap;flex-shrink:0">Vai trò</span>
+    </div>
+    <div style="padding:6px 10px;border-bottom:1px solid #f0f0f0">
+      <div style="background:#f5f6f7;border-radius:5px;padding:4px 9px;display:flex;align-items:center;gap:5px">
+        ${svg.search()}
+        <span style="font-size:11px;color:#bbb">Tìm kiếm...</span>
+      </div>
+    </div>
+    <div style="padding:6px 0">
+      ${sec("Danh mục Lead", state.leftLeadsOpen, "leftLeads", navItem("all", "Tất cả lead", state.leads.length, false) + navItem("unassigned", "Chưa phân công", unassignedCount, unassignedCount > 0))}
+      ${sec("Pipeline", state.leftPipelineOpen, "leftPipeline", `<div style="padding:3px 12px 2px 22px;font-size:10.5px;color:#aaa;font-weight:500">Sự kiện phễu</div>${funnelItems}`)}
+      ${sec("Chiến dịch", state.leftCampaignOpen, "leftCampaign", campaignItems)}
+    </div>
+  </div>`;
+    }
+
+    // ─── Main area ────────────────────────────────────────────────────────────────
+    function renderMain() {
+      return `<div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden">
+    ${renderTopbar()}
+    ${renderContent()}
+  </div>`;
+    }
+
+    function renderTopbar() {
+      const gt = grandTotal();
+      return `<div style="height:44px;background:#fff;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;padding:0 14px;gap:8px;flex-shrink:0">
+    <div style="background:#fff7f7;border:1px solid #fecaca;border-radius:5px;padding:4px 10px;font-size:11.5px;color:#e8333a;font-weight:600;flex-shrink:0">
+      Tổng DS dự kiến: ${gt.toLocaleString("vi-VN")} ₫
+    </div>
+    <div style="position:relative">
+      <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%)">${svg.search()}</span>
+      <input id="mainSearch" value="${state.search}" placeholder="Tìm kiếm lead..." style="width:200px;padding:5px 9px 5px 25px;border:1px solid #e5e7eb;border-radius:5px;font-size:12px;outline:none;background:#fafafa">
+    </div>
+    <button id="btnAddLead" style="display:flex;align-items:center;padding:0;background:#e8333a;border:none;border-radius:5px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;overflow:hidden">
+      <span style="padding:6px 12px">+ Thêm Lead</span>
+    </button>
+    <button style="width:28px;height:28px;border:1px solid #e5e7eb;border-radius:5px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6b7280">${svg.filter()}</button>
+    <div style="margin-left:auto;display:flex;gap:4px">
+      <button data-view="kanban" style="width:28px;height:28px;border:1px solid ${state.viewMode === "kanban" ? "#e8333a" : "#e5e7eb"};border-radius:5px;background:${state.viewMode === "kanban" ? "#fff5f5" : "#fff"};cursor:pointer;display:flex;align-items:center;justify-content:center;color:${state.viewMode === "kanban" ? "#e8333a" : "#888"}">${svg.kanban(state.viewMode === "kanban" ? "#e8333a" : "#888")}</button>
+      <button data-view="table" style="width:28px;height:28px;border:1px solid ${state.viewMode === "table" ? "#e8333a" : "#e5e7eb"};border-radius:5px;background:${state.viewMode === "table" ? "#fff5f5" : "#fff"};cursor:pointer;display:flex;align-items:center;justify-content:center;color:${state.viewMode === "table" ? "#e8333a" : "#888"}">${svg.table(state.viewMode === "table" ? "#e8333a" : "#888")}</button>
+    </div>
+  </div>`;
+    }
+
+    function renderContent() {
+      const v = state.activeLeadView;
+      if (v === "campaign_c1") return renderCampaignDashboard();
+      if (v === "campaign_c2") return renderAdmissionDashboard();
+      if (v === "unassigned") return renderUnassigned();
+      if (state.viewMode === "kanban") return renderKanban();
+      return renderTable();
+    }
+
+    // ─── Kanban ───────────────────────────────────────────────────────────────────
+    function renderKanban() {
+      return `<div style="flex:1;display:flex;overflow-x:auto;padding:12px;gap:0">
+    ${STAGES.map(stage => {
+        const cols = byStage(stage.id);
+        const isOver = state.dragOverStage === stage.id;
+        return `<div data-stage="${stage.id}" style="flex:0 0 222px;display:flex;flex-direction:column;margin-right:9px"
+        ondragover="onStageDragOver(event,'${stage.id}')" ondragleave="onStageDragLeave()" ondrop="onStageDrop(event,'${stage.id}')">
+        <div style="padding:6px 10px;display:flex;align-items:center;gap:6px">
+          <span style="width:7px;height:7px;border-radius:50%;background:${stage.dot};display:inline-block;flex-shrink:0"></span>
+          <span style="font-size:12.5px;font-weight:600;color:#1f2937;flex:1">${stage.label}</span>
+          <span style="background:#e5e7eb;color:#6b7280;font-size:10.5px;font-weight:700;border-radius:9px;padding:1px 6px">${cols.length}</span>
+        </div>
+        <div style="padding:2px 10px 7px;font-size:10.5px;color:#9ca3af">DS dự kiến: <strong style="color:#374151">${stageTotal(stage.id).toLocaleString("vi-VN")} ₫</strong></div>
+        <div style="flex:1;overflow-y:auto;padding-bottom:8px;min-height:60px;border-radius:7px;border:1.5px dashed ${isOver ? TEAL[400] : "transparent"};background:${isOver ? TEAL[50] : "transparent"};transition:all .12s">
+          ${cols.map(lead => renderKanbanCard(lead)).join("")}
+        </div>
+      </div>`;
+      }).join("")}
+  </div>`;
+    }
+    function renderKanbanCard(lead) {
+      return `<div data-leadcard="${lead.id}" draggable="true" ondragstart="onCardDragStart(event,${lead.id})"
+    style="background:#fff;border-radius:7px;padding:10px 11px;border:1px solid #e5e7eb;margin-bottom:7px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.05);user-select:none;transition:box-shadow .12s"
+    onmouseenter="this.style.boxShadow='0 4px 14px rgba(0,0,0,0.09)'" onmouseleave="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.05)'">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      ${avatar(lead.name, 26)}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12.5px;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${lead.name}</div>
+        <div style="font-size:10px;color:#9ca3af;margin-top:1px">${lead.code}</div>
+      </div>
+    </div>
+    ${lead.tags.length ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:7px">${lead.tags.map(t => tagBadge(t)).join("")}</div>` : ""}
+    <div style="display:flex;align-items:center;justify-content:space-between;background:#f9fafb;border-radius:5px;padding:5px 8px;margin-bottom:7px;border:1px solid #f0f0f0">
+      <span style="font-size:10px;color:#9ca3af;font-weight:500;text-transform:uppercase;letter-spacing:.04em">DS dự kiến</span>
+      <span style="font-size:11.5px;font-weight:700;color:#e8333a;cursor:text;border-bottom:1px dashed #fca5a5">${(lead.expectedRevenue || 0).toLocaleString("vi-VN")} ₫</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7280">
+      ${svg.phone("#6b7280", 9)}
+      <span>${lead.phone}</span>
+      <span style="margin-left:auto;font-size:10px;background:#f3f4f6;padding:1px 6px;border-radius:8px;color:#6b7280">${lead.assignee.split(" ").pop()}</span>
+    </div>
+  </div>`;
+    }
+
+    // ─── Table view ───────────────────────────────────────────────────────────────
+    function renderTable() {
+      const filtered = getFiltered();
+      const total = filtered.reduce((s, l) => s + (l.expectedRevenue || 0), 0);
+      return `<div style="flex:1;overflow-y:auto;padding:12px">
+    <div style="background:#fff;border-radius:7px;border:1px solid #e5e7eb;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:#fafafa;border-bottom:1px solid #f0f0f0">
+            ${["Họ tên & Mã", "SĐT", "Ngành", "Nguồn", "Trạng thái", "DS Dự Kiến", "Tags", "Ngày tạo", "Phụ trách"].map(h => `<th style="padding:8px 12px;text-align:left;font-size:10.5px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap">${h}</th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${filtered.map(lead => {
+        const stage = STAGES.find(s => s.id === lead.status);
+        return `<tr data-leadrow="${lead.id}" style="border-bottom:1px solid #f5f5f5;cursor:pointer"
+              onmouseenter="this.style.background='#fafafa'" onmouseleave="this.style.background='#fff'">
+              <td style="padding:9px 12px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  ${avatar(lead.name, 24)}
+                  <div>
+                    <div style="font-size:12.5px;font-weight:500;color:#111">${lead.name}</div>
+                    <div style="font-size:10px;color:#9ca3af">${lead.code}</div>
+                  </div>
+                </div>
+              </td>
+              <td style="padding:9px 12px;font-size:12px;color:#555">${lead.phone}</td>
+              <td style="padding:9px 12px;font-size:11.5px;color:#555;max-width:120px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${lead.major}</div></td>
+              <td style="padding:9px 12px;font-size:12px;color:#6b7280">${lead.source}</td>
+              <td style="padding:9px 12px">
+                <span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:500;color:#374151">
+                  <span style="width:5px;height:5px;border-radius:50%;background:${stage?.dot};display:inline-block"></span>
+                  ${stage?.label}
+                </span>
+              </td>
+              <td style="padding:9px 12px"><span style="font-size:12px;font-weight:600;color:#e8333a">${(lead.expectedRevenue || 0).toLocaleString("vi-VN")} ₫</span></td>
+              <td style="padding:9px 12px"><div style="display:flex;gap:3px">${lead.tags.map(t => tagBadge(t)).join("")}</div></td>
+              <td style="padding:9px 12px;font-size:11px;color:#9ca3af;white-space:nowrap">${lead.createdAt}</td>
+              <td style="padding:9px 12px;font-size:12px;color:#555">${lead.assignee}</td>
+            </tr>`;
+      }).join("")}
+          <tr style="background:#fafafa;border-top:2px solid #e5e7eb">
+            <td colspan="5" style="padding:8px 12px;font-size:12px;font-weight:600;color:#374151">Tổng cộng (${filtered.length} leads)</td>
+            <td style="padding:8px 12px"><span style="font-size:12.5px;font-weight:700;color:#e8333a">${total.toLocaleString("vi-VN")} ₫</span></td>
+            <td colspan="3"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+    }
+
+    // ─── Unassigned view ──────────────────────────────────────────────────────────
+    function renderUnassigned() {
+      const unassigned = getUnassigned();
+      const totalRev = unassigned.reduce((s, l) => s + (l.expectedRevenue || 0), 0);
+      const newest = [...unassigned].sort((a, b) => b.id - a.id)[0]?.name || "-";
+      const srcCount = {}; unassigned.forEach(l => srcCount[l.source] = (srcCount[l.source] || 0) + 1);
+      const topSrc = Object.entries(srcCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "-";
+      const stats = [
+        { label: "Tổng chưa phân công", value: String(unassigned.length), icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>` },
+        { label: "DS dự kiến bỏ lỡ", value: totalRev.toLocaleString("vi-VN") + " ₫", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v2m0 8v2M9.5 9.5A2.5 2.5 0 0 1 12 8a2.5 2.5 0 0 1 0 5"/></svg>` },
+        { label: "Lead mới nhất", value: newest, icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>` },
+        { label: "Nguồn nhiều nhất", value: topSrc, icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>` },
+      ];
+      return `<div style="flex:1;overflow-y:auto;padding:16px">
+    <div style="margin-bottom:14px;display:flex;align-items:center">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#111">Chưa phân công</div>
+        <div style="font-size:12px;color:#9ca3af;margin-top:2px">Các lead chưa được giao cho nhân viên nào</div>
+      </div>
+      <div style="margin-left:auto">
+        <span style="background:#fee2e2;color:#dc2626;font-size:12px;font-weight:700;padding:3px 12px;border-radius:12px;border:1px solid #fecaca">${unassigned.length} lead chưa phân công</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+      ${stats.map(s => `<div style="background:#fff;border-radius:8px;padding:12px 14px;border:1px solid #e5e7eb;display:flex;align-items:center;gap:10px">
+        <div style="width:34px;height:34px;border-radius:8px;background:#f5f6f7;display:flex;align-items:center;justify-content:center;flex-shrink:0">${s.icon}</div>
+        <div>
+          <div style="font-size:10.5px;color:#9ca3af;margin-bottom:3px">${s.label}</div>
+          <div style="font-size:13.5px;font-weight:700;color:#374151">${s.value}</div>
+        </div>
+      </div>`).join("")}
+    </div>
+    <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden">
+      <div style="padding:12px 16px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;font-weight:600;color:#374151">Danh sách lead chưa phân công</span>
+        <button id="btnAddLead" style="padding:5px 12px;background:#e8333a;color:#fff;border:none;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer">+ Thêm Lead</button>
+      </div>
+      ${unassigned.length === 0 ? `<div style="padding:52px 0;text-align:center">
+        <div style="margin-bottom:12px;display:flex;justify-content:center">${svg.check("#d1d5db", 40)}</div>
+        <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:6px">Tất cả lead đã được phân công!</div>
+        <div style="font-size:12.5px;color:#9ca3af">Không có lead nào đang chờ phân công nhân viên.</div>
+      </div>`: `<table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:#fafafa;border-bottom:1px solid #f0f0f0">
+            ${["Họ tên", "SĐT", "Ngành", "Nguồn", "Trạng thái", "DS Dự Kiến", "Tags", "Ngày tạo", "Phân công"].map(h => `<th style="padding:9px 12px;text-align:left;font-size:10.5px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">${h}</th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${unassigned.map(lead => {
+        const stage = STAGES.find(s => s.id === lead.status);
+        return `<tr onmouseenter="this.style.background='#fafafa'" onmouseleave="this.style.background='#fff'" style="border-bottom:1px solid #f5f5f5">
+              <td style="padding:10px 12px">
+                <div style="display:flex;align-items:center;gap:8px;cursor:pointer" data-leadrow="${lead.id}">
+                  ${avatar(lead.name, 26)}
+                  <div>
+                    <div style="font-size:12.5px;font-weight:600;color:#111">${lead.name}</div>
+                    <div style="font-size:10px;color:#9ca3af">${lead.code}</div>
+                  </div>
+                </div>
+              </td>
+              <td style="padding:10px 12px;font-size:12px;color:#555">${lead.phone}</td>
+              <td style="padding:10px 12px;font-size:11.5px;color:#555;max-width:120px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${lead.major}</div></td>
+              <td style="padding:10px 12px"><span style="font-size:11.5px;color:#6b7280">${lead.source}</span></td>
+              <td style="padding:10px 12px">
+                <span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:500">
+                  <span style="width:5px;height:5px;border-radius:50%;background:${stage?.dot};display:inline-block"></span>
+                  ${stage?.label}
+                </span>
+              </td>
+              <td style="padding:10px 12px"><span style="font-size:12px;font-weight:600;color:#e8333a">${(lead.expectedRevenue || 0).toLocaleString("vi-VN")} ₫</span></td>
+              <td style="padding:10px 12px"><div style="display:flex;gap:3px;flex-wrap:wrap">${lead.tags.map(t => tagBadge(t)).join("")}</div></td>
+              <td style="padding:10px 12px;font-size:11px;color:#9ca3af;white-space:nowrap">${lead.createdAt}</td>
+              <td style="padding:10px 12px">
+                <select data-assign="${lead.id}" style="padding:5px 8px;border:1px solid #e8333a;border-radius:5px;font-size:12px;color:#e8333a;font-weight:600;outline:none;cursor:pointer;background:#fff5f5">
+                  <option value="">Chọn nhân viên...</option>
+                  ${ASSIGNEES.map(a => `<option value="${a}">${a}</option>`).join("")}
+                </select>
+              </td>
+            </tr>`;
+      }).join("")}
+        </tbody>
+        <tfoot>
+          <tr style="background:#fafafa;border-top:2px solid #e5e7eb">
+            <td colspan="5" style="padding:8px 12px;font-size:12px;font-weight:600;color:#374151">Tổng (${unassigned.length} leads chưa phân công)</td>
+            <td style="padding:8px 12px"><span style="font-size:12.5px;font-weight:700;color:#e8333a">${totalRev.toLocaleString("vi-VN")} ₫</span></td>
+            <td colspan="3"></td>
+          </tr>
+        </tfoot>
+      </table>`}
+    </div>
+  </div>`;
+    }
+
+    // ─── Lead Modal ───────────────────────────────────────────────────────────────
+    function renderLeadModal() {
+      const lead = state.selectedLead;
+      if (!lead) return "";
+      const form = state.modalForm || lead;
+      const stageIdx = STAGES.findIndex(s => s.id === form.status);
+      const notes = state.modalNotes;
+      const tasks = state.modalTasks;
+      const tab = state.modalTab;
+      const rightTab = state.modalRightTab;
+      const qual = QUALITY_OPTIONS.find(q => q.value === (form.quality || "normal")) || QUALITY_OPTIONS[4];
+      return `<div id="leadModalBg" style="position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;background:rgba(15,20,30,0.4)">
+    <div style="width:min(960px,96vw);height:min(620px,92vh);background:#fff;border-radius:10px;display:flex;flex-direction:column;box-shadow:0 24px 72px rgba(0,0,0,0.22);overflow:hidden">
+      
+      <!-- Top bar: stage tabs -->
+      <div style="border-bottom:1px solid #e5e7eb;padding:0 0 0 16px;display:flex;align-items:center;flex-shrink:0;background:#fff">
+        <div style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#374151;padding:11px 0;margin-right:8px;flex-shrink:0;border-right:1px solid #e5e7eb;padding-right:14px">
+          ${svg.funnel("#6b7280", 11)} ${form.code}
+        </div>
+        <div style="display:flex;flex:1;overflow-x:auto">
+          ${STAGES.map((s, i) => `<button data-setstage="${s.id}" style="padding:11px 16px;font-size:12px;font-weight:${i === stageIdx ? 700 : 400};border:none;border-bottom:${i === stageIdx ? "2px solid #e8333a" : "2px solid transparent"};background:${i === stageIdx ? "#fff5f5" : "transparent"};color:${i === stageIdx ? "#e8333a" : i < stageIdx ? "#6b7280" : "#9ca3af"};cursor:pointer;white-space:nowrap;transition:all .1s">${s.label}</button>`).join("")}
+        </div>
+        <button id="modalClose" style="border:none;background:none;cursor:pointer;color:#9ca3af;font-size:17px;padding:0 16px;height:100%;line-height:1">✕</button>
+      </div>
+
+      <!-- Second row: lead info -->
+      <div style="border-bottom:1px solid #e5e7eb;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;background:#fff">
+        ${avatar(form.name, 34)}
+        <div style="flex:1">
+          <div style="font-size:14.5px;font-weight:700;color:#111">${form.name}</div>
+          <div style="font-size:11.5px;color:#9ca3af;margin-top:1px">${form.phone} · ${form.email}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:11px;color:#9ca3af">Nguồn:</span>
+          ${renderSourceBadge(form.source)}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:11px;color:#9ca3af">Chất lượng:</span>
+          <div style="position:relative">
+            <button id="qualityToggle" style="display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:5px;border:1px solid ${qual.color}30;background:${qual.bg};cursor:pointer;font-size:12px;font-weight:500;color:${qual.color}">
+              ${qual.label} <span style="font-size:8px">▼</span>
+            </button>
+            ${state.qualityOpenFor ? "renderQualityDropdown()" : ""}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:11px;color:#9ca3af">Phụ trách:</span>
+          <select id="modalAssignee" style="border:1px solid #e5e7eb;border-radius:5px;padding:3px 7px;font-size:12px;color:#374151;outline:none;background:#fff">
+            ${ASSIGNEES.map(a => `<option ${a === form.assignee ? "selected" : ""}>${a}</option>`).join("")}
+          </select>
+        </div>
+        <div style="display:flex;gap:5px">
+          ${[
+          { t: "Gọi điện", i: svg.phone("#6b7280", 13) },
+          { t: "Email", i: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>` },
+          { t: "SMS", i: svg.msg("#6b7280", 13) },
+        ].map(b => `<button title="${b.t}" style="width:28px;height:28px;border:1px solid #e5e7eb;border-radius:5px;background:#fafafa;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6b7280"
+            onmouseenter="this.style.background='#f0f0f0'" onmouseleave="this.style.background='#fafafa'">${b.i}</button>`).join("")}
+        </div>
+      </div>
+
+      <!-- Tags row -->
+      <div style="border-bottom:1px solid #f5f5f5;padding:6px 16px;display:flex;align-items:center;gap:6px;flex-shrink:0;background:#fafafa">
+        <span style="font-size:11px;color:#9ca3af">Thẻ tag:</span>
+        ${form.tags.map(t => tagBadge(t)).join("")}
+        <span style="font-size:11px;color:#bbb;cursor:pointer;padding:1px 6px;border:1px dashed #d1d5db;border-radius:3px">+ Thêm tag</span>
+        <span style="margin-left:auto;font-size:11px;color:#9ca3af">Phễu: <strong style="color:#374151">Phễu tháng 1/26</strong></span>
+      </div>
+
+      <!-- Body: left+right -->
+      <div style="flex:1;display:flex;overflow:hidden">
+        <!-- Left: tab content -->
+        <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0">
+          <div style="border-bottom:1px solid #e5e7eb;padding:0 16px;display:flex;gap:0;flex-shrink:0;background:#fff">
+            ${[{ id: "customer", label: "Khách hàng" }, { id: "discuss", label: "Thảo luận" }, { id: "tasks", label: "Tác vụ" }, { id: "revenue", label: "Doanh số" }].map(t => `<button data-modaltab="${t.id}" style="padding:8px 14px;border:none;background:transparent;border-bottom:${tab === t.id ? "2px solid #e8333a" : "2px solid transparent"};color:${tab === t.id ? "#e8333a" : "#6b7280"};font-size:12px;font-weight:${tab === t.id ? 600 : 400};cursor:pointer">${t.label}</button>`).join("")}
+          </div>
+          <div style="flex:1;overflow-y:auto;padding:14px 16px">
+            ${renderModalTabContent(form, tab, lead, notes, tasks)}
+          </div>
+          <div style="border-top:1px solid #e5e7eb;padding:10px 16px;display:flex;justify-content:flex-end;gap:8px;flex-shrink:0;background:#fff">
+            <button id="modalCancel" style="padding:7px 18px;border:1px solid #e5e7eb;border-radius:5px;background:#fff;font-size:12.5px;cursor:pointer;color:#6b7280">Hủy</button>
+            <button id="modalSave" style="padding:7px 20px;border:none;border-radius:5px;background:#e8333a;color:#fff;font-size:12.5px;font-weight:600;cursor:pointer">Xác nhận</button>
+          </div>
+        </div>
+        <!-- Right panel -->
+        <div style="width:280px;border-left:1px solid #e5e7eb;display:flex;flex-direction:column;background:#fff;flex-shrink:0">
+          <div style="border-bottom:1px solid #e5e7eb;padding:0 14px;display:flex;gap:0;flex-shrink:0">
+            ${[{ id: "info", label: "Khách hàng" }, { id: "history", label: "Lịch sử" }].map(t => `<button data-modalright="${t.id}" style="padding:9px 12px;border:none;background:transparent;border-bottom:${rightTab === t.id ? "2px solid #e8333a" : "2px solid transparent"};color:${rightTab === t.id ? "#e8333a" : "#6b7280"};font-size:12px;font-weight:${rightTab === t.id ? 600 : 400};cursor:pointer">${t.label}</button>`).join("")}
+          </div>
+          <div style="flex:1;overflow-y:auto;padding:12px 14px">
+            ${renderModalRightPanel(form, lead, rightTab)}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+    }
+
+    function renderSourceBadge(source) {
+      const m = SOURCE_META[source] || SOURCE_META["Website"];
+      return `<button id="sourceToggle" style="display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:5px;border:1px solid ${m.color}30;background:${m.bg};cursor:pointer;font-size:12px;font-weight:500;color:${m.color}">
+    ${source} <span style="font-size:8px">▼</span>
+  </button>`;
+    }
+
+    function renderModalTabContent(form, tab, lead, notes, tasks) {
+      if (tab === "customer") return renderModalCustomer(form);
+      if (tab === "discuss") return renderModalDiscuss(notes);
+      if (tab === "tasks") return renderModalTasks(tasks);
+      if (tab === "revenue") return renderModalRevenue(form, lead);
+      return "";
+    }
+    function renderModalCustomer(form) {
+      return `<div style="display:flex;flex-direction:column;gap:12px">
+    <div>
+      <div style="font-size:11.5px;font-weight:600;color:#374151;margin-bottom:6px;display:flex;align-items:center;gap:4px">Thông tin khách hàng <span style="font-size:10px;color:#9ca3af;cursor:pointer">?</span></div>
+      <div style="position:relative;margin-bottom:8px">
+        ${svg.search("#bbb", 11)}
+        <input placeholder="Tìm kiếm khách hàng theo Họ tên, SĐT hoặc Email khách hàng" style="width:100%;padding:6px 10px 6px 26px;border:1px solid #e5e7eb;border-radius:5px;font-size:11.5px;outline:none;box-sizing:border-box">
+      </div>
+      <div style="font-size:10.5px;color:#6b7280;margin-bottom:5px">Khách hàng tương ứng trong hệ thống <span style="cursor:pointer;color:#9ca3af">✏</span></div>
+      <div style="display:flex;align-items:center;gap:7px;padding:6px 9px;background:#f9fafb;border-radius:5px;border:1px solid #f0f0f0;margin-bottom:10px">
+        ${avatar(form.name, 20)}
+        <span style="font-size:12px;font-weight:500;color:#374151;flex:1">${form.name}</span>
+        <button style="border:none;background:none;cursor:pointer;color:#9ca3af;font-size:13px">↕</button>
+        <button style="width:18px;height:18px;border-radius:50%;border:none;background:#fee2e2;cursor:pointer;color:#dc2626;font-size:10px;display:flex;align-items:center;justify-content:center">✕</button>
+      </div>
+    </div>
+    <div style="background:#fafafa;border:1px solid #f0f0f0;border-radius:6px;padding:8px 10px">
+      <div style="font-size:11.5px;font-weight:600;color:#374151;display:flex;align-items:center;gap:4px;cursor:pointer">Hành vi mua hàng ${svg.chevDown()}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-top:8px">
+        ${[
+          ["Tổng doanh thu:", form.revenue ? (form.revenue.toLocaleString("vi-VN") + " VND") : "0 VND", form.revenue > 0 ? "#dc2626" : "#374151"],
+          ["Giá trị đơn TB:", form.orders ? Math.round(form.revenue / form.orders).toLocaleString("vi-VN") + " VND" : "0 VND", "#374151"],
+          ["Điểm RFM:", String(form.rfm || 0), "#374151"],
+          ["Hạng thành viên:", form.membership || "-", "#374151"],
+        ].map(([k, v, c]) => `<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;border-bottom:1px solid #f5f5f5">
+          <span style="color:#6b7280">${k}</span><span style="color:${c};font-weight:500">${v}</span>
+        </div>`).join("")}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div><label style="display:block;font-size:10.5px;font-weight:600;color:#9ca3af;margin-bottom:3px;text-transform:uppercase">Tên khách hàng</label>
+        <input id="mf_name" value="${form.name || ""}" style="width:100%;padding:6px 9px;border:1px solid #e5e7eb;border-radius:5px;font-size:12.5px;outline:none;box-sizing:border-box"></div>
+      <div><label style="display:block;font-size:10.5px;font-weight:600;color:#9ca3af;margin-bottom:3px;text-transform:uppercase">Số điện thoại</label>
+        <input id="mf_phone" value="${form.phone || ""}" placeholder="Nhập số điện thoại..." style="width:100%;padding:6px 9px;border:1px solid #e5e7eb;border-radius:5px;font-size:12.5px;outline:none;box-sizing:border-box"></div>
+      <div><label style="display:block;font-size:10.5px;font-weight:600;color:#9ca3af;margin-bottom:3px;text-transform:uppercase">Email</label>
+        <input id="mf_email" value="${form.email || ""}" placeholder="Nhập Email..." style="width:100%;padding:6px 9px;border:1px solid #e5e7eb;border-radius:5px;font-size:12.5px;outline:none;box-sizing:border-box"></div>
+      <div><label style="display:block;font-size:10.5px;font-weight:600;color:#9ca3af;margin-bottom:3px;text-transform:uppercase">Giới tính</label>
+        <div style="display:flex;gap:14px;margin-top:6px">
+          ${["Nam", "Nữ", "Khác"].map(g => `<label style="display:flex;align-items:center;gap:4px;font-size:12.5px;cursor:pointer;color:#374151"><input type="radio" name="modal_gender" ${form.gender === g ? "checked" : ""} value="${g}" style="accent-color:#e8333a">${g}</label>`).join("")}
+        </div>
+      </div>
+    </div>
+    <div>
+      <label style="display:block;font-size:10.5px;font-weight:600;color:#9ca3af;margin-bottom:3px;text-transform:uppercase">Địa chỉ</label>
+      <div style="display:flex;gap:8px">
+        <select id="mf_province" style="flex:0 0 160px;padding:6px 9px;border:1px solid #e5e7eb;border-radius:5px;font-size:12px;outline:none">
+          <option value="">Chọn Tỉnh/Thành phố</option>
+          ${PROVINCES.map(p => `<option ${p === form.province ? "selected" : ""}>${p}</option>`).join("")}
+        </select>
+        <input id="mf_address" value="${form.address || ""}" placeholder="Nhập chi tiết (Số nhà, ngách, ngõ, đường)" style="flex:1;padding:6px 9px;border:1px solid #e5e7eb;border-radius:5px;font-size:12px;outline:none">
+      </div>
+    </div>
+  </div>`;
+    }
+    function renderModalDiscuss(notes) {
+      return `<div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input id="newNote" value="${state.modalNewNote}" placeholder="Viết ghi chú..." style="flex:1;padding:7px 11px;border:1px solid #e5e7eb;border-radius:6px;font-size:12.5px;outline:none">
+      <button id="addNote" style="padding:7px 14px;background:#e8333a;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Gửi</button>
+    </div>
+    ${notes.length === 0 ? `<div style="text-align:center;padding:28px 0;font-size:12.5px;color:#d1d5db;font-style:italic">Chưa có ghi chú nào</div>` : ""}
+    ${notes.map((n, i) => `<div style="background:#fafafa;border:1px solid #e5e7eb;border-radius:6px;padding:9px 12px;margin-bottom:7px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+        <span style="font-size:11.5px;font-weight:600;color:#374151">${n.author}</span>
+        <span style="font-size:10.5px;color:#9ca3af">${n.time}</span>
+      </div>
+      <div style="font-size:12.5px;color:#4b5563;line-height:1.5">${n.text}</div>
+    </div>`).join("")}
+  </div>`;
+    }
+    function renderModalTasks(tasks) {
+      return `<div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input id="newTask" value="${state.modalNewTask}" placeholder="Thêm tác vụ..." style="flex:1;padding:7px 11px;border:1px solid #e5e7eb;border-radius:6px;font-size:12.5px;outline:none">
+      <button id="addTask" style="padding:7px 14px;background:#e8333a;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Thêm</button>
+    </div>
+    ${tasks.length === 0 ? `<div style="text-align:center;padding:28px 0;font-size:12.5px;color:#d1d5db;font-style:italic">Chưa có tác vụ nào</div>` : ""}
+    ${tasks.map((t, i) => `<div style="background:#fafafa;border:1px solid #e5e7eb;border-radius:6px;padding:9px 12px;margin-bottom:6px;display:flex;align-items:center;gap:9px">
+      <input type="checkbox" data-tasktoggle="${i}" ${t.done ? "checked" : ""} style="accent-color:#e8333a;width:13px;height:13px">
+      <span style="font-size:12.5px;color:${t.done ? "#9ca3af" : "#374151"};text-decoration:${t.done ? "line-through" : "none"};flex:1">${t.text}</span>
+      <button data-taskdel="${i}" style="border:none;background:none;cursor:pointer;color:#d1d5db;font-size:13px">✕</button>
+    </div>`).join("")}
+  </div>`;
+    }
+    function renderModalRevenue(form, lead) {
+      return `<div style="display:flex;flex-direction:column;gap:12px">
+    <div style="background:#fff7f7;border:1px solid #fecaca;border-radius:7px;padding:12px">
+      <div style="font-size:11.5px;font-weight:600;color:#374151;margin-bottom:8px">Doanh số dự kiến</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="number" id="mf_expectedRevenue" value="${form.expectedRevenue || 0}" style="flex:1;padding:7px 10px;border:1px solid #e5e7eb;border-radius:5px;font-size:13px;font-weight:600;color:#e8333a;outline:none">
+        <span style="font-size:12px;color:#6b7280">₫</span>
+      </div>
+    </div>
+    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:7px;padding:12px">
+      <div style="font-size:11.5px;font-weight:600;color:#374151;margin-bottom:8px">Hành vi mua hàng</div>
+      ${[["Tổng doanh thu thực tế", fmt(lead.revenue)], ["Số đơn hàng", lead.orders || 0], ["Giá trị đơn trung bình", lead.orders ? fmt(Math.round(lead.revenue / lead.orders)) : "0 ₫"], ["Điểm RFM", lead.rfm || 0], ["Hạng thành viên", lead.membership || "-"]].map(([k, v]) => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f5f5f5;font-size:12px">
+        <span style="color:#6b7280">${k}</span><span style="font-weight:500;color:#111">${v}</span>
+      </div>`).join("")}
+    </div>
+  </div>`;
+    }
+    function renderModalRightPanel(form, lead, rightTab) {
+      if (rightTab === "info") return `
+    <div style="font-size:11.5px;font-weight:600;color:#374151;margin-bottom:8px;display:flex;align-items:center;gap:4px">Thông tin khách hàng <span style="font-size:10px;color:#9ca3af;cursor:pointer">?</span></div>
+    <div style="position:relative;margin-bottom:8px">
+      ${svg.search("#bbb", 10)}<input placeholder="Tìm khách hàng..." style="width:100%;padding:5px 8px 5px 23px;border:1px solid #e5e7eb;border-radius:5px;font-size:11px;outline:none;box-sizing:border-box">
+    </div>
+    <div style="font-size:10.5px;color:#6b7280;margin-bottom:5px">Khách hàng tương ứng trong hệ thống <span style="cursor:pointer;color:#9ca3af">✏</span></div>
+    <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:#f9fafb;border-radius:5px;border:1px solid #f0f0f0;margin-bottom:12px">
+      ${avatar(form.name, 18)}
+      <span style="font-size:11.5px;font-weight:500;color:#374151;flex:1">${form.name}</span>
+      <button style="border:none;background:none;cursor:pointer;color:#9ca3af;font-size:11px">↕</button>
+      <button style="width:16px;height:16px;border-radius:50%;border:none;background:#fee2e2;cursor:pointer;color:#dc2626;font-size:9px;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div style="font-size:11px;font-weight:600;color:#6b7280;margin-bottom:6px;display:flex;align-items:center;gap:3px">Hành vi mua hàng ${svg.chevDown()}</div>
+    ${[["Tổng doanh thu:", lead.revenue ? (lead.revenue.toLocaleString("vi-VN") + " VND") : "0 VND", lead.revenue > 0 ? "#dc2626" : "#374151"], ["Giá trị đơn TB:", lead.orders ? Math.round(lead.revenue / lead.orders).toLocaleString("vi-VN") + " VND" : "0 VND", "#374151"], ["Điểm RFM:", String(lead.rfm || 0), "#374151"], ["Hạng thành viên:", lead.membership || "-", "#374151"]].map(([k, v, c]) => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f5f5f5;font-size:11px"><span style="color:#6b7280">${k}</span><span style="color:${c};font-weight:500">${v}</span></div>`).join("")}
+    <div style="margin-top:12px">
+      <div style="display:flex;gap:0;border-bottom:1px solid #e5e7eb;margin-bottom:8px">
+        ${["Thành công (0)", "Hoàn (0)", "Hủy (0)"].map((t, i) => `<button style="padding:5px 9px;border:none;background:transparent;font-size:10.5px;font-weight:${i === 0 ? 600 : 400};border-bottom:${i === 0 ? "2px solid #e8333a" : "2px solid transparent"};color:${i === 0 ? "#e8333a" : "#9ca3af"};cursor:pointer">${t}</button>`).join("")}
+      </div>
+      <div style="text-align:center;padding:16px 0;font-size:11.5px;color:#d1d5db;font-style:italic">Không có đơn hàng</div>
+    </div>
+    ${[{ k: "name", l: "Tên khách hàng", v: form.name }, { k: "phone", l: "Số điện thoại", v: form.phone, p: "Nhập số điện thoại..." }, { k: "email", l: "Email", v: form.email, p: "Nhập Email" }].map(f => `<div style="margin-bottom:8px"><div style="font-size:10.5px;color:#9ca3af;margin-bottom:3px">${f.l}</div><input id="mfr_${f.k}" value="${f.v || ""}" placeholder="${f.p || ""}" style="width:100%;padding:6px 8px;border:1px solid #e5e7eb;border-radius:5px;font-size:12px;outline:none;box-sizing:border-box"></div>`).join("")}`;
+      return `<div>
+    <div style="font-size:11.5px;font-weight:600;color:#374151;margin-bottom:12px">Lịch sử hoạt động</div>
+    ${[{ icon: "→", text: `Chuyển sang "${STAGES.find(s => s.id === lead.status)?.label}"`, time: lead.createdAt }, { icon: "+", text: "Lead được tạo", time: lead.createdAt }].map(h => `<div style="display:flex;gap:8px;margin-bottom:12px">
+      <div style="width:22px;height:22px;border-radius:50%;background:#f3f4f6;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;font-size:10px;color:#6b7280;flex-shrink:0;margin-top:1px">${h.icon}</div>
+      <div><div style="font-size:12px;color:#374151">${h.text}</div><div style="font-size:10.5px;color:#9ca3af;margin-top:2px">${h.time}</div></div>
+    </div>`).join("")}
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <div style="width:22px;height:22px;border-radius:50%;background:#f3f4f6;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${svg.phone("#6b7280", 10)}</div>
+      <div><div style="font-size:12px;color:#374151">Nguồn lead: <strong>${lead.source}</strong></div><div style="font-size:10.5px;color:#9ca3af;margin-top:2px">${lead.createdAt}</div></div>
+    </div>
+    <div style="text-align:center;padding:12px 0;font-size:11.5px;color:#d1d5db;font-style:italic">Đã hiển thị tất cả lịch sử</div>
+  </div>`;
+    }
+
+    function renderAddModal() {
+      const nl = state.newLead;
+      // Duplicate check logic
+      let warnMsg = "";
+      if (nl.phone || nl.email) {
+        const dup = state.leads.find(l => (nl.phone && l.phone === nl.phone) || (nl.email && l.email === nl.email));
+        if (dup) {
+          warnMsg = `<div style="background:#fff1f0;border:1px solid #fecaca;border-radius:6px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px">
+        <span style="color:#dc2626;margin-top:2px">⚠️</span>
+        <div style="flex:1">
+          <div style="font-size:12.5px;font-weight:700;color:#dc2626;margin-bottom:2px">Lead đã tồn tại trong hệ thống</div>
+          <div style="font-size:11.5px;color:#9ca3af;margin-bottom:6px">Khách hàng <strong style="color:#111">${dup.name}</strong> (${dup.phone}) đã được tạo lúc ${dup.createdAt}.</div>
+          <div style="display:flex;gap:8px">
+            <button onclick="state.selectedLead=state.leads.find(l=>l.id===${dup.id});state.modalForm={...state.selectedLead};state.modalTab='customer';state.modalRightTab='info';state.showAddModal=false;render()" style="padding:4px 10px;border:1px solid #fecaca;border-radius:5px;background:#fff;font-size:11px;color:#dc2626;font-weight:600;cursor:pointer">Xem lead hiện có</button>
+            <button onclick="document.getElementById('dupWarnIgnore').style.display='none'" style="padding:4px 10px;border:1px solid #e5e7eb;border-radius:5px;background:#fff;font-size:11px;color:#6b7280;cursor:pointer">Bỏ qua và tạo mới</button>
+          </div>
+        </div>
+      </div>`;
+        }
+      }
+
+      return `<div id="addModalBg" style="position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box">
+    <div style="background:#fff;border-radius:12px;width:100%;max-width:860px;max-height:96vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,0.15)">
+      
+      <!-- Header -->
+      <div style="padding:18px 24px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#111;margin-bottom:3px">Thêm Lead Mới</div>
+          <div style="font-size:12px;color:#9ca3af">Nhập thông tin khách hàng và kích hoạt automation workflow.</div>
+        </div>
+        <button id="addModalClose" style="border:none;background:none;cursor:pointer;color:#9ca3af;font-size:20px;padding:4px;border-radius:6px" onmouseenter="this.style.background='#f3f4f6'" onmouseleave="this.style.background='none'">✕</button>
+      </div>
+
+      <!-- Body -->
+      <div style="flex:1;overflow-y:auto;padding:24px;background:#f9fafb">
+        ${warnMsg ? `<div id="dupWarnIgnore">${warnMsg}</div>` : ""}
+        
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+          
+          <!-- Column 1: Khách hàng & CRM -->
+          <div style="display:flex;flex-direction:column;gap:16px">
+            
+            <!-- Thông tin khách hàng -->
+            <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;padding:20px">
+              <div style="font-size:13px;font-weight:700;color:#111;margin-bottom:14px;display:flex;align-items:center;gap:6px">
+                <span style="width:24px;height:24px;border-radius:6px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center">${svg.user("#2563eb", 12)}</span>
+                1. Thông tin khách hàng
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">Tên khách hàng <span style="color:#dc2626">*</span></label>
+                  <input id="nl_name" type="text" value="${nl.name || ""}" placeholder="Nhập họ và tên..." style="width:100%;padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;outline:none;box-sizing:border-box">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                  <div>
+                    <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">Số điện thoại <span style="color:#dc2626">*</span></label>
+                    <input id="nl_phone" type="tel" value="${nl.phone || ""}" oninput="this.value=this.value.replace(/\\D/g,''); renderAddModalLive()" placeholder="09xx xxx xxx" style="width:100%;padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;outline:none;box-sizing:border-box">
+                  </div>
+                  <div>
+                    <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">Email</label>
+                    <input id="nl_email" type="email" value="${nl.email || ""}" oninput="renderAddModalLive()" placeholder="nhap@email.com" style="width:100%;padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;outline:none;box-sizing:border-box">
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                  <div>
+                    <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">Giới tính</label>
+                    <select id="nl_gender" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;outline:none">
+                      ${["Khác", "Nam", "Nữ"].map(g => `<option ${nl.gender === g ? "selected" : ""}>${g}</option>`).join("")}
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">Tỉnh / Thành phố</label>
+                    <select id="nl_province" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;outline:none">
+                      <option value="">Chọn Tỉnh/TP...</option>
+                      ${PROVINCES.map(o => `<option ${o === nl.province ? "selected" : ""}>${o}</option>`).join("")}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Thông tin CRM -->
+            <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;padding:20px">
+              <div style="font-size:13px;font-weight:700;color:#111;margin-bottom:14px;display:flex;align-items:center;gap:6px">
+                <span style="width:24px;height:24px;border-radius:6px;background:#fef5f5;color:#e8333a;display:flex;align-items:center;justify-content:center">${svg.settings("#e8333a", 12)}</span>
+                2. Thông tin CRM
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                  <div>
+                    <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">Trạng thái lead</label>
+                    <select id="nl_status" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;outline:none;background:#fef5f5;color:#e8333a;font-weight:600">
+                      ${STAGES.map(o => `<option value="${o.id}" ${o.id === "new" ? "selected" : ""}>${o.label}</option>`).join("")}
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">Nhân viên phụ trách</label>
+                    <select id="nl_assignee" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;outline:none">
+                      <option value="auto">⚡ Tự động phân bổ</option>
+                      ${ASSIGNEES.map(o => `<option ${o === (nl.assignee || ASSIGNEES[0]) ? "selected" : ""} value="${o}">${o}</option>`).join("")}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">Tag phân loại lead</label>
+                  <input id="nl_tags" type="text" value="${nl.tags ? nl.tags.join(", ") : ""}" placeholder="VD: Học bổng, Nóng, Quan tâm CNTT... (cách nhau bởi dấu phẩy)" style="width:100%;padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;outline:none;box-sizing:border-box">
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Column 2: Tuyển sinh, Nguồn & Automation -->
+          <div style="display:flex;flex-direction:column;gap:16px">
+
+            <!-- Thông tin tuyển sinh -->
+            <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;padding:20px">
+              <div style="font-size:13px;font-weight:700;color:#111;margin-bottom:14px;display:flex;align-items:center;gap:6px">
+                <span style="width:24px;height:24px;border-radius:6px;background:#f0fdf4;color:#16a34a;display:flex;align-items:center;justify-content:center">${svg.grad("#16a34a", 12)}</span>
+                3. Thông tin tuyển sinh
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">Ngành quan tâm</label>
+                  <select id="nl_major" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;outline:none">
+                    ${MAJORS.map(o => `<option ${o === (nl.major || MAJORS[0]) ? "selected" : ""}>${o}</option>`).join("")}
+                  </select>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                  <div>
+                    <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">Năm tuyển sinh</label>
+                    <select id="nl_admyear" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;outline:none">
+                      <option>2026</option><option>2025</option><option>2024</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">Mùa tuyển sinh</label>
+                    <select id="nl_admseason" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;outline:none">
+                      <option>Thu - Đông</option><option>Xuân - Hè</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Nguồn Lead -->
+            <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;padding:20px">
+              <div style="font-size:13px;font-weight:700;color:#111;margin-bottom:14px;display:flex;align-items:center;gap:6px">
+                <span style="width:24px;height:24px;border-radius:6px;background:#fef3c7;color:#d97706;display:flex;align-items:center;justify-content:center">${svg.map("#d97706", 12)}</span>
+                4. Nguồn Lead
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">Nguồn lead <span style="color:#dc2626">*</span></label>
+                  <select id="nl_source" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;outline:none">
+                    ${SOURCES.map(o => `<option ${o === (nl.source || SOURCES[0]) ? "selected" : ""}>${o}</option>`).join("")}
+                  </select>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                  <div>
+                    <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">Chiến dịch Marketing</label>
+                    <select id="nl_camp" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;outline:none">
+                      <option value="">Không có</option>
+                      ${CAMPAIGNS.map(o => `<option value="${o.id}">${o.label}</option>`).join("")}
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">Kênh tham chiếu</label>
+                    <input id="nl_utm" type="text" placeholder="VD: organic, cpc..." style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;outline:none;box-sizing:border-box">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Automation Banner -->
+            <div style="background:linear-gradient(135deg, ${TEAL[50]}, #fff);border-radius:8px;border:1px solid ${TEAL[200]};padding:16px">
+              <div style="font-size:12px;font-weight:700;color:${TEAL[800]};margin-bottom:10px;display:flex;align-items:center;gap:6px">
+                ⚡ Automation kích hoạt khi lưu:
+              </div>
+              <div style="font-size:11px;color:${TEAL[700]};display:flex;flex-direction:column;gap:6px;padding-left:14px">
+                <li style="margin:0">Tạo task "Gọi tư vấn lần 1" sau 15 phút.</li>
+                <li style="margin:0">Gửi SMS chào mừng từ hotline SGC.</li>
+                <li style="margin:0">Gửi Email mẫu brochure qua địa chỉ liên hệ.</li>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Buttons -->
+      <div style="padding:16px 24px;border-top:1px solid #f0f0f0;display:flex;justify-content:flex-end;gap:10px;background:#fff;flex-shrink:0">
+        <button id="addModalCancel" style="padding:9px 20px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:#374151">Hủy bỏ</button>
+        <button id="addModalSubmit" style="padding:9px 20px;border:1px solid ${TEAL[600]};border-radius:8px;background:#fff;color:${TEAL[600]};font-size:13px;font-weight:700;cursor:pointer">Tạo Lead Mới</button>
+        <button id="addModalCall" style="padding:9px 24px;border:none;border-radius:8px;background:${TEAL[600]};color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(13,148,136,0.3)">
+          ${svg.phone("#fff", 14)} Tạo & Gọi Ngay
+        </button>
+      </div>
+
+    </div>
+  </div>`;
+    }
+
+    // Hàm re-render modal live khi người dùng gõ phím để check trùng lặp 
+    window.renderAddModalLive = function () {
+      const n = document.getElementById("nl_name")?.value || "";
+      const p = document.getElementById("nl_phone")?.value || "";
+      const e = document.getElementById("nl_email")?.value || "";
+      state.newLead = { ...state.newLead, name: n, phone: p, email: e };
+      state.showAddModal = true;
+      render();
+
+      // Khôi phục giá trị input tránh bị mất focus khi gõ
+      setTimeout(() => {
+        const elPhone = document.getElementById("nl_phone");
+        if (elPhone) { elPhone.focus(); const len = elPhone.value.length; elPhone.setSelectionRange(len, len); }
+      }, 0);
+    };
+
+    // ─── Campaign Dashboard ───────────────────────────────────────────────────────
+    function renderCampaignDashboard() {
+      const cl = state.campLeads;
+      const allL = cl.length;
+      const qualified = cl.filter(l => l.score >= 70).length;
+      const contacted = cl.filter(l => l.status !== "new").length;
+      const consulting = cl.filter(l => ["consulting", "closing", "enrolled"].includes(l.status)).length;
+      const closing = cl.filter(l => ["closing", "enrolled"].includes(l.status)).length;
+      const enrolled = cl.filter(l => l.status === "enrolled").length;
+      const totalCost = CAMP_SOURCES.reduce((s, src) => s + src.leads * src.cpl, 0);
+      const cpl = allL ? Math.round(totalCost / allL) : 0;
+      const convRate = allL ? Math.round(enrolled / allL * 100) : 0;
+      const tab = state.campTab;
+      const kpi = [
+        { label: "Tổng Leads", value: allL, sub: "chiến dịch tháng 3", color: TEAL[700], bg: TEAL[50], icon: svg.user(TEAL[700], 13) },
+        { label: "Qualified Leads", value: qualified, sub: `${Math.round(qualified / allL * 100)}% tổng leads`, color: TEAL[600], bg: TEAL[50], icon: svg.check(TEAL[600], 13) },
+        { label: "Tỷ lệ liên hệ", value: Math.round(contacted / allL * 100) + "%", sub: `${contacted}/${allL} leads`, color: TEAL[500], bg: TEAL[50], icon: svg.phone(TEAL[500], 13) },
+        { label: "Tỷ lệ tư vấn", value: Math.round(consulting / allL * 100) + "%", sub: `${consulting} đang tư vấn`, color: TEAL[600], bg: TEAL[100], icon: svg.msg(TEAL[600], 13) },
+        { label: "Tỷ lệ nộp hồ sơ", value: Math.round(closing / allL * 100) + "%", sub: `${closing} hồ sơ`, color: TEAL[700], bg: TEAL[100], icon: svg.doc(TEAL[700], 13) },
+        { label: "Chi phí / Lead", value: cpl.toLocaleString("vi-VN") + "₫", sub: "trung bình chiến dịch", color: TEAL[800], bg: TEAL[100], icon: svg.coin(TEAL[800], 13) },
+        { label: "Tỷ lệ chuyển đổi", value: convRate + "%", sub: `${enrolled} nhập học`, color: TEAL[900], bg: TEAL[100], icon: svg.target(TEAL[900], 13) },
+      ];
+      return `<div style="flex:1;display:flex;flex-direction:column;overflow:hidden;background:#f8fafc">
+    <div style="background:#fff;border-bottom:1px solid #e5e7eb;padding:0 20px;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:10px;padding-top:12px;padding-bottom:8px">
+        <div style="width:32px;height:32px;border-radius:7px;background:${BLUE[600]};display:flex;align-items:center;justify-content:center">${svg.target("#fff", 16)}</div>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#111">Chiến dịch tháng 3</div>
+          <div style="font-size:11.5px;color:#9ca3af">01/03/2026 – 31/03/2026 · Đang hoạt động</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <span style="background:${BLUE[50]};color:${BLUE[700]};font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:12px;border:1px solid ${BLUE[200]};display:flex;align-items:center;gap:4px">
+            <span style="width:6px;height:6px;border-radius:50%;background:${BLUE[500]};display:inline-block"></span>Đang chạy
+          </span>
+          <button style="padding:6px 14px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;color:#374151">Chỉnh sửa</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:0">
+        ${[{ id: "overview", l: "Tổng quan" }, { id: "sources", l: "Phân tích nguồn" }, { id: "pipeline", l: "Pipeline" }, { id: "automation", l: "Automation" }].map(t => `<button data-camptab="${t.id}" style="padding:8px 16px;border:none;background:transparent;border-bottom:${tab === t.id ? `2px solid ${BLUE[600]}` : "2px solid transparent"};color:${tab === t.id ? BLUE[600] : "#6b7280"};font-size:12.5px;font-weight:${tab === t.id ? 600 : 400};cursor:pointer">${t.l}</button>`).join("")}
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px">
+      ${tab === "overview" ? renderCampOverview(allL, contacted, consulting, closing, enrolled, kpi) : ""}
+      ${tab === "sources" ? renderCampSources(cpl, totalCost) : ""}
+      ${tab === "pipeline" ? renderCampPipeline() : ""}
+      ${tab === "automation" ? renderCampAutomation() : ""}
+    </div>
+  </div>`;
+    }
+    function renderCampOverview(allL, contacted, consulting, closing, enrolled, kpi) {
+      const funnelData = [
+        { label: "Lead mới", v: allL, color: TEAL[300] },
+        { label: "Liên hệ", v: contacted, color: TEAL[400] },
+        { label: "Tư vấn", v: consulting, color: TEAL[500] },
+        { label: "Hồ sơ", v: closing, color: TEAL[700] },
+        { label: "Nhập học", v: enrolled, color: TEAL[900] },
+      ];
+      return `<div style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:10px">
+      ${kpi.map(k => `<div style="background:#fff;border-radius:8px;padding:14px 12px;border:1px solid ${TEAL[100]}">
+        <div style="width:28px;height:28px;border-radius:6px;background:${k.bg};display:flex;align-items:center;justify-content:center;margin-bottom:8px">${k.icon}</div>
+        <div style="font-size:20px;font-weight:800;color:${k.color};line-height:1;margin-bottom:4px">${k.value}</div>
+        <div style="font-size:10.5px;font-weight:600;color:#374151;margin-bottom:2px">${k.label}</div>
+        <div style="font-size:10px;color:#9ca3af">${k.sub}</div>
+      </div>`).join("")}
+    </div>
+    <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;padding:16px">
+      <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:14px">Phễu tuyển sinh</div>
+      <div style="display:flex;align-items:flex-end;gap:10px;height:180px">
+        ${funnelData.map((b, i) => {
+        const pct = allL ? Math.round(b.v / allL * 100) : 0; const h = Math.max(18, Math.round(pct * 1.2)); return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div style="font-size:13px;font-weight:700;color:${b.color}">${b.v}</div>
+          <div style="width:100%;height:${h}px;background:${b.color};border-radius:4px 4px 0 0"></div>
+          <div style="font-size:10px;color:#6b7280;text-align:center">${b.label}</div>
+          <div style="font-size:10.5px;font-weight:600;color:${b.color}">${pct}%</div>
+        </div>`}).join("")}
+      </div>
+    </div>
+    <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;padding:16px">
+      <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:12px">Top nguồn lead</div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        ${[...CAMP_SOURCES].sort((a, b) => b.leads - a.leads).slice(0, 5).map((s, i) => {
+          const shades = [BLUE[900], BLUE[700], BLUE[600], BLUE[500], BLUE[400]];
+          const c = shades[i] || BLUE[500];
+          const total = CAMP_SOURCES.reduce((t, x) => t + x.leads, 0);
+          const pct = Math.round(s.leads / total * 100);
+          return `<div style="display:flex;align-items:center;gap:10px">
+            <span style="width:6px;height:6px;border-radius:50%;background:${c};flex-shrink:0"></span>
+            <span style="font-size:12px;color:#374151;width:104px;flex-shrink:0">${s.label}</span>
+            ${minibar(pct, c)}
+            <span style="font-size:12px;font-weight:600;color:${c};width:28px;text-align:right;flex-shrink:0">${s.leads}</span>
+            <span style="font-size:10.5px;color:#9ca3af;width:30px;text-align:right;flex-shrink:0">${pct}%</span>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>
+  </div>`;
+    }
+    function renderCampSources(cpl, totalCost) {
+      return `<div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden">
+    <div style="padding:12px 16px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;font-weight:600;color:#374151">Phân tích theo nguồn lead</span>
+      <span style="font-size:11.5px;color:#9ca3af">Tổng: ${CAMP_SOURCES.reduce((s, x) => s + x.leads, 0)} leads</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:#fafafa;border-bottom:1px solid #f0f0f0">
+        ${["Nguồn", "Số Lead", "Lead CL (≥70đ)", "Tỷ lệ liên hệ", "Tỷ lệ chuyển đổi", "Chi phí/Lead", "Tổng chi phí", "Hiệu quả"].map(h => `<th style="padding:9px 12px;text-align:left;font-size:10.5px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">${h}</th>`).join("")}
+      </tr></thead>
+      <tbody>
+        ${CAMP_SOURCES.map((s, idx) => {
+        const rowColor = [BLUE[900], BLUE[800], BLUE[700], BLUE[600], BLUE[600], BLUE[500], BLUE[500]][idx] || BLUE[600];
+        const eff = s.converted >= 30 ? { label: "Xuất sắc", color: BLUE[700], bg: BLUE[100] } : s.converted >= 20 ? { label: "Tốt", color: BLUE[600], bg: BLUE[50] } : s.converted >= 15 ? { label: "Trung bình", color: "#374151", bg: "#f3f4f6" } : { label: "Cần cải thiện", color: "#6b7280", bg: "#f3f4f6" };
+        const total = CAMP_SOURCES.reduce((t, x) => t + x.leads, 0);
+        return `<tr style="border-bottom:1px solid #f5f5f5" onmouseenter="this.style.background='${BLUE[50]}'" onmouseleave="this.style.background='#fff'">
+            <td style="padding:11px 12px"><div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:${rowColor};flex-shrink:0"></span><span style="font-size:12.5px;font-weight:600;color:#111">${s.label}</span></div></td>
+            <td style="padding:11px 12px"><div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:4px">${s.leads}</div>${minibar(Math.round(s.leads / total * 100), rowColor)}</td>
+            <td style="padding:11px 12px"><div style="font-size:13px;font-weight:600;color:#374151">${s.qualified}</div><div style="font-size:10.5px;color:#9ca3af">${Math.round(s.qualified / s.leads * 100)}%</div></td>
+            <td style="padding:11px 12px"><div style="display:flex;align-items:center;gap:6px">${minibar(s.contacted, rowColor)}<span style="font-size:12px;font-weight:600;color:${rowColor};flex-shrink:0;width:34px">${s.contacted}%</span></div></td>
+            <td style="padding:11px 12px"><div style="display:flex;align-items:center;gap:6px">${minibar(s.converted, rowColor)}<span style="font-size:12px;font-weight:600;color:${rowColor};flex-shrink:0;width:34px">${s.converted}%</span></div></td>
+            <td style="padding:11px 12px;font-size:12.5px;font-weight:600;color:${s.cpl > 0 ? "#374151" : BLUE[600]}">${s.cpl > 0 ? s.cpl.toLocaleString("vi-VN") + " ₫" : "Miễn phí"}</td>
+            <td style="padding:11px 12px;font-size:12px;color:#374151">${(s.leads * s.cpl).toLocaleString("vi-VN")} ₫</td>
+            <td style="padding:11px 12px"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:8px;background:${eff.bg};color:${eff.color}">${eff.label}</span></td>
+          </tr>`;
+      }).join("")}
+      </tbody>
+      <tfoot><tr style="background:#fafafa;border-top:2px solid ${BLUE[100]}">
+        <td style="padding:9px 12px;font-size:12px;font-weight:700;color:#374151">Tổng cộng</td>
+        <td style="padding:9px 12px;font-size:13px;font-weight:700;color:${BLUE[700]}">${CAMP_SOURCES.reduce((s, x) => s + x.leads, 0)}</td>
+        <td style="padding:9px 12px;font-size:12px;font-weight:600;color:#374151">${CAMP_SOURCES.reduce((s, x) => s + x.qualified, 0)}</td>
+        <td style="padding:9px 12px;font-size:12px;color:#9ca3af">—</td>
+        <td style="padding:9px 12px;font-size:12px;color:#9ca3af">—</td>
+        <td style="padding:9px 12px;font-size:12px;font-weight:600;color:${BLUE[700]}">${cpl.toLocaleString("vi-VN")} ₫</td>
+        <td style="padding:9px 12px;font-size:12px;font-weight:700;color:${BLUE[800]}">${totalCost.toLocaleString("vi-VN")} ₫</td>
+        <td></td>
+      </tr></tfoot>
+    </table>
+  </div>`;
+    }
+    function renderCampPipeline() {
+      const fA = state.campFilterAssignee;
+      const fS = state.campFilterSource;
+      const filtered = state.campLeads.filter(l => (fA === "all" || l.assignee === fA) && (fS === "all" || l.source === fS));
+      const byS = id => filtered.filter(l => l.status === id);
+      return `<div style="display:flex;flex-direction:column;gap:10px">
+    <div style="background:#fff;border-radius:7px;border:1px solid #e5e7eb;padding:10px 14px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:12px;color:#9ca3af">Lọc theo:</span>
+      <select id="campFilterAssignee" style="padding:4px 9px;border:1px solid #e5e7eb;border-radius:5px;font-size:12px;outline:none">
+        <option value="all">Tất cả nhân viên</option>
+        ${ASSIGNEES.map(a => `<option ${fA === a ? "selected" : ""} value="${a}">${a}</option>`).join("")}
+      </select>
+      <select id="campFilterSource" style="padding:4px 9px;border:1px solid #e5e7eb;border-radius:5px;font-size:12px;outline:none">
+        <option value="all">Tất cả nguồn</option>
+        ${CAMP_SOURCES.map(s => `<option ${fS === s.id ? "selected" : ""} value="${s.id}">${s.label}</option>`).join("")}
+      </select>
+      <span style="font-size:11.5px;color:#9ca3af;margin-left:auto">${filtered.length}/${state.campLeads.length} leads · kéo thả để đổi giai đoạn</span>
+    </div>
+    <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">
+      ${CAMP_STAGES.map(stage => {
+        const cols = byS(stage.id);
+        const isOver = state.campDragOver === stage.id;
+        return `<div data-campstage="${stage.id}" style="flex:0 0 196px;display:flex;flex-direction:column"
+          ondragover="onCampStageDragOver(event,'${stage.id}')" ondragleave="onCampStageDragLeave()" ondrop="onCampStageDrop(event,'${stage.id}')">
+          <div style="padding:5px 2px 8px;display:flex;align-items:center;gap:6px">
+            <span style="width:7px;height:7px;border-radius:50%;background:${stage.dot};flex-shrink:0"></span>
+            <span style="font-size:12px;font-weight:600;color:#1f2937;flex:1">${stage.label}</span>
+            <span style="background:#e5e7eb;color:#6b7280;font-size:10px;font-weight:700;border-radius:8px;padding:1px 6px">${cols.length}</span>
+          </div>
+          <div style="flex:1;min-height:80px;border-radius:7px;padding:4px;transition:all .12s;background:${isOver ? TEAL[100] : stage.bg};border:1.5px dashed ${isOver ? TEAL[400] : "transparent"}">
+            ${cols.map(lead => {
+          const src = CAMP_SOURCES.find(s => s.id === lead.source);
+          const isHigh = lead.score >= 80;
+          return `<div draggable="true" data-camplc="${lead.id}" ondragstart="onCampCardDragStart(event,${lead.id})"
+                style="background:#fff;border-radius:6px;padding:9px 10px;margin-bottom:6px;border:1px solid ${isHigh ? TEAL[300] : TEAL[100]};cursor:pointer;user-select:none;box-shadow:${isHigh ? `0 0 0 1.5px ${TEAL[200]}` : "0 1px 3px rgba(0,0,0,0.04)"};transition:box-shadow .1s"
+                onmouseenter="this.style.boxShadow='0 4px 12px ${TEAL[100]}'" onmouseleave="this.style.boxShadow='${isHigh ? `0 0 0 1.5px ${TEAL[200]}` : "0 1px 3px rgba(0,0,0,0.04)"}'">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                  ${avatar(lead.name, 22)}
+                  <div style="flex:1;min-width:0">
+                    <div style="font-size:11.5px;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${lead.name}</div>
+                    <div style="font-size:10px;color:#9ca3af">${lead.phone}</div>
+                  </div>
+                  ${isHigh ? `<span style="font-size:9px;background:${TEAL[100]};color:${TEAL[700]};padding:1px 5px;border-radius:6px;font-weight:700;flex-shrink:0">↑${lead.score}</span>` : ""}
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  ${src ? `<span style="font-size:10px;color:${TEAL[600]};background:${TEAL[50]};padding:1px 6px;border-radius:4px;font-weight:500">${src.label}</span>` : ""}
+                  <span style="font-size:10px;font-weight:600;color:#6b7280;background:#f3f4f6;padding:1px 6px;border-radius:6px">${lead.score}đ</span>
+                </div>
+              </div>`;
+        }).join("")}
+          </div>
+        </div>`;
+      }).join("")}
+    </div>
+  </div>`;
+    }
+    function renderCampAutomation() {
+      const flows = state.campFlows;
+      const flowIcons = [svg.email, svg.doc, svg.bell, svg.coin, svg.refresh];
+      return `<div style="display:flex;flex-direction:column;gap:12px">
+    <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden">
+      <div style="padding:12px 16px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between">
+        <div><div style="font-size:13px;font-weight:600;color:#374151">Automation Flow</div>
+        <div style="font-size:11.5px;color:#9ca3af;margin-top:2px">Quy trình tự động hóa khi lead vào chiến dịch</div></div>
+        <button style="padding:6px 14px;border:none;border-radius:6px;background:${BLUE[600]};color:#fff;font-size:12px;font-weight:600;cursor:pointer">+ Thêm quy tắc</button>
+      </div>
+      <div style="padding:20px 24px">
+        ${flows.map((flow, i) => {
+        const isActive = flow.status === "active";
+        const iconFn = flowIcons[i] || svg.email;
+        return `<div style="display:flex;align-items:stretch;gap:16px">
+            <div style="display:flex;flex-direction:column;align-items:center;width:28px;flex-shrink:0">
+              <div style="width:28px;height:28px;border-radius:50%;flex-shrink:0;background:${isActive ? BLUE[600] : "#e5e7eb"};display:flex;align-items:center;justify-content:center;box-shadow:${isActive ? `0 0 0 4px ${BLUE[100]}` : "none"};transition:all .2s">${iconFn(isActive ? "#fff" : SLATE[400], 13)}</div>
+              ${i < flows.length - 1 ? `<div style="flex:1;width:2px;min-height:28px;margin-top:4px;background:${isActive ? BLUE[200] : "#e5e7eb"}"></div>` : ""}
+            </div>
+            <div style="flex:1;padding-bottom:${i < flows.length - 1 ? 22 : 0}px">
+              <div style="background:${isActive ? "#fff" : "#fafafa"};border:1px solid ${isActive ? BLUE[200] : "#e5e7eb"};border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+                <div style="flex:1">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+                    <span style="font-size:9.5px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">TRIGGER</span>
+                    <span style="font-size:10.5px;background:${BLUE[50]};color:${BLUE[700]};padding:1px 7px;border-radius:7px;border:1px solid ${BLUE[100]}">${flow.delay}</span>
+                  </div>
+                  <div style="font-size:12.5px;font-weight:600;color:#374151;margin-bottom:5px">${flow.trigger}</div>
+                  <div style="display:flex;align-items:center;gap:5px">
+                    ${svg.arrow(isActive ? BLUE[600] : "#9ca3af")}
+                    <span style="font-size:12px;color:${isActive ? BLUE[600] : "#9ca3af"};font-weight:500">${flow.action}</span>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+                  <span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:10px;background:${isActive ? BLUE[50] : "#f3f4f6"};color:${isActive ? BLUE[700] : "#9ca3af"};border:1px solid ${isActive ? BLUE[200] : "#e5e7eb"}">${isActive ? "Đang bật" : "Tạm dừng"}</span>
+                  <button data-campflowtoggle="${flow.id}" style="padding:4px 10px;border:1px solid #e5e7eb;border-radius:5px;background:#fff;font-size:11px;cursor:pointer;color:#6b7280">${isActive ? "Tạm dừng" : "Kích hoạt"}</button>
+                </div>
+              </div>
+            </div>
+          </div>`;
+      }).join("")}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+      ${[{ l: "Leads được auto-assign", v: "12", icon: svg.user(BLUE[700], 15), color: BLUE[700], bg: BLUE[50] }, { l: "SMS đã gửi hôm nay", v: "8", icon: svg.msg(BLUE[600], 15), color: BLUE[600], bg: BLUE[50] }, { l: "Tasks follow-up tạo ra", v: "5", icon: svg.doc(BLUE[700], 15), color: BLUE[700], bg: BLUE[100] }, { l: "Leads cần remarketing", v: "3", icon: svg.refresh(BLUE[800], 15), color: BLUE[800], bg: BLUE[100] }].map(s => `<div style="background:#fff;border-radius:8px;padding:14px;border:1px solid #e5e7eb;display:flex;align-items:center;gap:12px">
+        <div style="width:36px;height:36px;border-radius:8px;background:${s.bg};display:flex;align-items:center;justify-content:center;flex-shrink:0">${s.icon}</div>
+        <div><div style="font-size:22px;font-weight:800;color:${s.color}">${s.v}</div><div style="font-size:11px;color:#9ca3af;margin-top:2px">${s.l}</div></div>
+      </div>`).join("")}
+    </div>
+  </div>`;
+    }
+
+    // ─── Admission Dashboard ──────────────────────────────────────────────────────
+    function renderAdmissionDashboard() {
+      const totalLeads = ADM_MAJORS.reduce((s, m) => s + m.leads, 0);
+      const qualified = Math.round(totalLeads * 0.68);
+      const applied = ADM_MAJORS.reduce((s, m) => s + m.applied, 0);
+      const enrolled = ADM_MAJORS.reduce((s, m) => s + m.enrolled, 0);
+      const convRate = Math.round(enrolled / totalLeads * 100);
+      const tuitionEst = enrolled * 18500000;
+      const tab = state.admTab;
+      const kpi = [
+        { label: "Tổng Leads", value: totalLeads, sub: "Mùa tuyển sinh 2026", color: TEAL[700], bg: TEAL[50], icon: svg.users(TEAL[700], 13) },
+        { label: "Leads chất lượng", value: qualified, sub: `${Math.round(qualified / totalLeads * 100)}% tổng leads`, color: TEAL[600], bg: TEAL[50], icon: svg.star(TEAL[600], 13) },
+        { label: "Hồ sơ đã nộp", value: applied, sub: `${Math.round(applied / totalLeads * 100)}% chuyển đổi`, color: TEAL[700], bg: TEAL[100], icon: svg.doc(TEAL[700], 13) },
+        { label: "Sinh viên nhập học", value: enrolled, sub: "Mục tiêu: 200 SV", color: TEAL[800], bg: TEAL[100], icon: svg.grad(TEAL[800], 13) },
+        { label: "Tỷ lệ chuyển đổi", value: convRate + "%", sub: "Lead → Nhập học", color: TEAL[900], bg: TEAL[100], icon: svg.target(TEAL[900], 13) },
+        { label: "Doanh thu học phí", value: (tuitionEst / 1000000).toFixed(0) + "tr ₫", sub: "Dự kiến toàn mùa", color: TEAL[700], bg: TEAL[50], icon: svg.coin(TEAL[700], 13) },
+      ];
+      const alertStyle = {
+        danger: { dot: "#dc2626", bg: "#fff1f0", border: "#fecaca", text: "#dc2626" },
+        warn: { dot: "#d97706", bg: "#fffbeb", border: "#fde68a", text: "#92400e" },
+        info: { dot: TEAL[600], bg: TEAL[50], border: TEAL[200], text: TEAL[700] },
+      };
+      const FUNNEL_STEPS = [
+        { label: "Lead mới", v: totalLeads, color: TEAL[300] },
+        { label: "Đã tư vấn", v: Math.round(totalLeads * 0.79), color: TEAL[400] },
+        { label: "Quan tâm ngành", v: Math.round(totalLeads * 0.64), color: TEAL[500] },
+        { label: "Nộp hồ sơ", v: applied, color: TEAL[600] },
+        { label: "Đóng học phí", v: Math.round(enrolled * 1.05), color: TEAL[700] },
+        { label: "Nhập học", v: enrolled, color: TEAL[900] },
+      ];
+      return `<div style="flex:1;display:flex;flex-direction:column;overflow:hidden;background:#f8fafc">
+    <div style="background:#fff;border-bottom:1px solid #e5e7eb;padding:0 20px;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:10px;padding-top:12px;padding-bottom:8px">
+        <div style="width:32px;height:32px;border-radius:7px;background:${TEAL[600]};display:flex;align-items:center;justify-content:center">${svg.grad("#fff", 16)}</div>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#111">Mùa tuyển sinh 2026</div>
+          <div style="font-size:11.5px;color:#9ca3af">01/01/2026 – 30/09/2026 · Đang triển khai</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <span style="background:#fff1f0;color:#dc2626;font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:12px;border:1px solid #fecaca;display:flex;align-items:center;gap:4px">
+            ${svg.bell("#dc2626", 11)} ${ADM_ALERTS.reduce((s, a) => s + a.count, 0)} cảnh báo
+          </span>
+          <span style="background:${TEAL[50]};color:${TEAL[700]};font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:12px;border:1px solid ${TEAL[200]};display:flex;align-items:center;gap:4px">
+            <span style="width:6px;height:6px;border-radius:50%;background:${TEAL[500]};display:inline-block"></span>Đang tuyển sinh
+          </span>
+          <button style="padding:6px 14px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;color:#374151">Xuất báo cáo</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:0">
+        ${[{ id: "overview", l: "Tổng quan" }, { id: "majors", l: "Theo ngành" }, { id: "provinces", l: "Theo tỉnh" }, { id: "automation", l: "Automation" }, { id: "team", l: "Đội ngũ & Cảnh báo" }].map(t => `<button data-admtab="${t.id}" style="padding:8px 16px;border:none;background:transparent;border-bottom:${tab === t.id ? `2px solid ${TEAL[600]}` : "2px solid transparent"};color:${tab === t.id ? TEAL[600] : "#6b7280"};font-size:12.5px;font-weight:${tab === t.id ? 600 : 400};cursor:pointer;white-space:nowrap">${t.l}</button>`).join("")}
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px">
+      ${tab === "overview" ? renderAdmOverview(kpi, totalLeads, FUNNEL_STEPS) : ""}
+      ${tab === "majors" ? renderAdmMajors(totalLeads, enrolled) : ""}
+      ${tab === "provinces" ? renderAdmProvinces() : ""}
+      ${tab === "automation" ? renderAdmAutomation() : ""}
+      ${tab === "team" ? renderAdmTeam(alertStyle) : ""}
+    </div>
+  </div>`;
+    }
+    function renderAdmOverview(kpi, totalLeads, FUNNEL_STEPS) {
+      return `<div style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px">
+      ${kpi.map(k => `<div style="background:#fff;border-radius:8px;padding:14px 12px;border:1px solid ${TEAL[100]}">
+        <div style="width:28px;height:28px;border-radius:6px;background:${k.bg};display:flex;align-items:center;justify-content:center;margin-bottom:8px">${k.icon}</div>
+        <div style="font-size:20px;font-weight:800;color:${k.color};line-height:1;margin-bottom:4px">${k.value}</div>
+        <div style="font-size:10.5px;font-weight:600;color:#374151;margin-bottom:2px">${k.label}</div>
+        <div style="font-size:10px;color:#9ca3af">${k.sub}</div>
+      </div>`).join("")}
+    </div>
+    <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;padding:16px">
+      <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:14px">Phễu tuyển sinh</div>
+      <div style="display:flex;flex-direction:column;gap:0">
+        ${FUNNEL_STEPS.map((step, i) => {
+        const nextV = FUNNEL_STEPS[i + 1]?.v;
+        const convToNext = nextV ? Math.round(nextV / step.v * 100) : null;
+        const barPct = Math.round(step.v / FUNNEL_STEPS[0].v * 100);
+        return `<div>
+            <div style="display:flex;align-items:center;gap:12px;padding:6px 0">
+              <span style="font-size:11.5px;color:${SLATE[600]};width:130px;flex-shrink:0">${step.label}</span>
+              <div style="flex:1;height:28px;background:${TEAL[50]};border-radius:5px;overflow:hidden;position:relative">
+                <div style="height:100%;width:${barPct}%;background:${step.color};border-radius:5px;transition:width .4s;display:flex;align-items:center;padding-left:8px">
+                  <span style="font-size:11.5px;font-weight:700;color:#fff;white-space:nowrap">${step.v.toLocaleString()}</span>
+                </div>
+              </div>
+              <span style="font-size:11.5px;font-weight:700;color:${step.color};width:42px;text-align:right;flex-shrink:0">${barPct}%</span>
+            </div>
+            ${convToNext !== null ? `<div style="display:flex;align-items:center;gap:4px;padding:0 0 0 142px;margin-bottom:2px"><div style="width:1px;height:8px;background:${TEAL[200]}"></div><span style="font-size:10px;color:${TEAL[600]};font-weight:500">→ ${convToNext}% chuyển tiếp</span></div>` : ""}
+          </div>`;
+      }).join("")}
+      </div>
+    </div>
+    <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;padding:16px">
+      <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:12px;display:flex;align-items:center;gap:6px">${svg.map(TEAL[600], 13)} Phân bổ theo tỉnh / khu vực</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${ADM_PROVINCES.map((p, i) => { const shades = [TEAL[900], TEAL[700], TEAL[600], TEAL[500], TEAL[400]]; const c = shades[i] || TEAL[500]; const pct = Math.round(p.leads / ADM_PROVINCES.reduce((s, x) => s + x.leads, 0) * 100); return `<div style="display:flex;align-items:center;gap:10px"><span style="width:6px;height:6px;border-radius:50%;background:${c};flex-shrink:0"></span><span style="font-size:12px;color:#374151;width:90px;flex-shrink:0">${p.label}</span>${admbar(pct, c)}<span style="font-size:12px;font-weight:700;color:${c};width:30px;text-align:right;flex-shrink:0">${p.leads}</span><span style="font-size:10px;color:#9ca3af;width:28px;text-align:right;flex-shrink:0">${pct}%</span></div>`; }).join("")}
+      </div>
+    </div>
+  </div>`;
+    }
+    function renderAdmMajors(totalLeads, enrolled) {
+      return `<div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden">
+    <div style="padding:12px 16px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;font-weight:600;color:#374151">Phân tích theo ngành học</span>
+      <span style="font-size:11.5px;color:#9ca3af">Tổng ${ADM_MAJORS.reduce((s, m) => s + m.leads, 0)} leads</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:${SLATE[50]};border-bottom:1px solid #f0f0f0">
+        ${["Ngành", "Tổng Leads", "Tỷ lệ quan tâm", "Tỷ lệ nộp hồ sơ", "Tỷ lệ nhập học", "Sinh viên nhập học", "Hiệu quả"].map(h => `<th style="padding:9px 14px;text-align:left;font-size:10.5px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">${h}</th>`).join("")}
+      </tr></thead>
+      <tbody>
+        ${ADM_MAJORS.map((m, i) => {
+        const shades = [TEAL[900], TEAL[700], TEAL[600], TEAL[500], TEAL[400]]; const c = shades[i] || TEAL[600]; const eff = m.enrolled >= 40 ? { label: "Xuất sắc", color: TEAL[700], bg: TEAL[100] } : m.enrolled >= 30 ? { label: "Tốt", color: TEAL[600], bg: TEAL[50] } : { label: "Trung bình", color: SLATE[500], bg: SLATE[100] }; return `<tr style="border-bottom:1px solid #f5f5f5" onmouseenter="this.style.background='${TEAL[50]}'" onmouseleave="this.style.background='#fff'">
+          <td style="padding:12px 14px"><div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:${c};flex-shrink:0"></span><span style="font-size:12.5px;font-weight:600;color:#111">${m.label}</span></div></td>
+          <td style="padding:12px 14px"><div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:4px">${m.leads}</div>${admbar(Math.round(m.leads / totalLeads * 100), c)}</td>
+          <td style="padding:12px 14px"><div style="display:flex;align-items:center;gap:6px">${admbar(m.interest, c)}<span style="font-size:12px;font-weight:600;color:${c};width:36px;flex-shrink:0">${m.interest}%</span></div></td>
+          <td style="padding:12px 14px"><div style="display:flex;align-items:center;gap:6px">${admbar(m.applied, c)}<span style="font-size:12px;font-weight:600;color:${c};width:36px;flex-shrink:0">${m.applied}%</span></div></td>
+          <td style="padding:12px 14px"><div style="display:flex;align-items:center;gap:6px">${admbar(m.enrolled, c)}<span style="font-size:12px;font-weight:600;color:${c};width:36px;flex-shrink:0">${m.enrolled}%</span></div></td>
+          <td style="padding:12px 14px"><span style="font-size:16px;font-weight:800;color:${c}">${m.enrolled}</span><span style="font-size:11px;color:#9ca3af;margin-left:4px">SV</span></td>
+          <td style="padding:12px 14px"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:8px;background:${eff.bg};color:${eff.color}">${eff.label}</span></td>
+        </tr>`;
+      }).join("")}
+      </tbody>
+      <tfoot><tr style="background:${SLATE[50]};border-top:2px solid ${TEAL[100]}">
+        <td style="padding:9px 14px;font-size:12px;font-weight:700;color:#374151">Tổng cộng</td>
+        <td style="padding:9px 14px;font-size:13px;font-weight:700;color:${TEAL[700]}">${totalLeads}</td>
+        <td colspan="3" style="padding:9px 14px;font-size:11.5px;color:#9ca3af">—</td>
+        <td style="padding:9px 14px;font-size:16px;font-weight:800;color:${TEAL[700]}">${enrolled} <span style="font-size:11px;font-weight:400">SV</span></td>
+        <td></td>
+      </tr></tfoot>
+    </table>
+  </div>`;
+    }
+    function renderAdmProvinces() {
+      return `<div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden">
+    <div style="padding:12px 16px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;font-weight:600;color:#374151">Phân tích theo tỉnh / khu vực</span>
+      <span style="font-size:11.5px;color:#9ca3af">Tổng ${ADM_PROVINCES.reduce((s, p) => s + p.leads, 0)} leads</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:${SLATE[50]};border-bottom:1px solid #f0f0f0">
+        ${["Tỉnh / Khu vực", "Tổng Leads", "Tỷ lệ", "Đã nộp hồ sơ", "Tỷ lệ nộp", "Nhập học", "Tỷ lệ nhập học"].map(h => `<th style="padding:9px 14px;text-align:left;font-size:10.5px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">${h}</th>`).join("")}
+      </tr></thead>
+      <tbody>
+        ${ADM_PROVINCES.map((p, i) => {
+        const shades = [TEAL[900], TEAL[700], TEAL[600], TEAL[500], TEAL[400]]; const c = shades[i] || TEAL[600]; const totalProv = ADM_PROVINCES.reduce((s, x) => s + x.leads, 0); const share = Math.round(p.leads / totalProv * 100); const applyRate = Math.round(p.applied / p.leads * 100); const enrollRate = Math.round(p.enrolled / p.leads * 100); return `<tr style="border-bottom:1px solid #f5f5f5" onmouseenter="this.style.background='${TEAL[50]}'" onmouseleave="this.style.background='#fff'">
+          <td style="padding:12px 14px"><div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:${c};flex-shrink:0"></span><span style="font-size:12.5px;font-weight:600;color:#111">${p.label}</span></div></td>
+          <td style="padding:12px 14px;font-size:14px;font-weight:700;color:#374151">${p.leads}</td>
+          <td style="padding:12px 14px"><div style="display:flex;align-items:center;gap:6px">${admbar(share, c)}<span style="font-size:11.5px;font-weight:600;color:${c};width:32px;flex-shrink:0">${share}%</span></div></td>
+          <td style="padding:12px 14px;font-size:13px;font-weight:600;color:#374151">${p.applied}</td>
+          <td style="padding:12px 14px"><div style="display:flex;align-items:center;gap:6px">${admbar(applyRate, c)}<span style="font-size:11.5px;font-weight:600;color:${c};width:32px;flex-shrink:0">${applyRate}%</span></div></td>
+          <td style="padding:12px 14px;font-size:14px;font-weight:700;color:${c}">${p.enrolled}</td>
+          <td style="padding:12px 14px"><div style="display:flex;align-items:center;gap:6px">${admbar(enrollRate, c)}<span style="font-size:11.5px;font-weight:600;color:${c};width:32px;flex-shrink:0">${enrollRate}%</span></div></td>
+        </tr>`;
+      }).join("")}
+      </tbody>
+    </table>
+  </div>`;
+    }
+    function renderAdmAutomation() {
+      const flows = state.admFlows;
+      const flowIcons = [svg.email, svg.doc, svg.bell, svg.coin, svg.grad];
+      return `<div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden">
+    <div style="padding:12px 16px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:13px;font-weight:600;color:#374151">Automation Flow – Mùa tuyển sinh</div>
+      <div style="font-size:11.5px;color:#9ca3af;margin-top:2px">Quy trình tự động theo từng bước funnel</div></div>
+      <button style="padding:6px 14px;border:none;border-radius:6px;background:${TEAL[600]};color:#fff;font-size:12px;font-weight:600;cursor:pointer">+ Thêm quy tắc</button>
+    </div>
+    <div style="padding:20px 24px">
+      ${flows.map((flow, i) => {
+        const isActive = flow.status === "active";
+        const iconFn = flowIcons[i] || svg.email;
+        return `<div style="display:flex;align-items:stretch;gap:16px">
+          <div style="display:flex;flex-direction:column;align-items:center;width:28px;flex-shrink:0">
+            <div style="width:28px;height:28px;border-radius:50%;flex-shrink:0;background:${isActive ? TEAL[600] : SLATE[200]};display:flex;align-items:center;justify-content:center;box-shadow:${isActive ? `0 0 0 4px ${TEAL[100]}` : "none"};transition:all .2s">${iconFn(isActive ? "#fff" : SLATE[400], 13)}</div>
+            ${i < flows.length - 1 ? `<div style="flex:1;width:2px;min-height:28px;margin-top:4px;background:${isActive ? TEAL[200] : SLATE[200]}"></div>` : ""}
+          </div>
+          <div style="flex:1;padding-bottom:${i < flows.length - 1 ? 22 : 0}px">
+            <div style="background:${isActive ? "#fff" : "#fafafa"};border:1px solid ${isActive ? TEAL[200] : "#e5e7eb"};border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+                  <span style="font-size:9.5px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">TRIGGER</span>
+                  <span style="font-size:10.5px;background:${TEAL[50]};color:${TEAL[700]};padding:1px 7px;border-radius:7px;border:1px solid ${TEAL[200]}">${flow.delay}</span>
+                </div>
+                <div style="font-size:12.5px;font-weight:600;color:#374151;margin-bottom:5px">${flow.trigger}</div>
+                <div style="display:flex;align-items:center;gap:5px">
+                  ${svg.arrow(isActive ? TEAL[600] : "#9ca3af")}
+                  <span style="font-size:12px;color:${isActive ? TEAL[600] : "#9ca3af"};font-weight:500">${flow.action}</span>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+                <span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:10px;background:${isActive ? TEAL[50] : "#f3f4f6"};color:${isActive ? TEAL[700] : "#9ca3af"};border:1px solid ${isActive ? TEAL[200] : "#e5e7eb"}">${isActive ? "Đang bật" : "Tạm dừng"}</span>
+                <button data-admflowtoggle="${flow.id}" style="padding:4px 10px;border:1px solid #e5e7eb;border-radius:5px;background:#fff;font-size:11px;cursor:pointer;color:#6b7280">${isActive ? "Tạm dừng" : "Kích hoạt"}</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }).join("")}
+    </div>
+  </div>`;
+    }
+    function renderAdmTeam(alertStyle) {
+      const as = alertStyle;
+      const alertList = ADM_ALERTS.map(a => ({ ...a, done: state.resolvedAlerts.includes(a.id) }));
+      const unresolvedCount = alertList.filter(a => !a.done).reduce((s, a) => s + a.count, 0);
+      return `<div style="display:flex;flex-direction:column;gap:12px;position:relative">
+    <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden">
+      <div style="padding:12px 16px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;gap:6px">
+        ${svg.bell("#dc2626", 13)}
+        <span style="font-size:13px;font-weight:600;color:#374151">Cảnh báo hệ thống</span>
+        ${unresolvedCount > 0 ? `<span style="background:#fee2e2;color:#dc2626;font-size:11px;font-weight:700;padding:1px 7px;border-radius:8px;margin-left:4px">${unresolvedCount}</span>` : `<span style="background:${TEAL[50]};color:${TEAL[700]};font-size:11px;font-weight:600;padding:1px 7px;border-radius:8px;margin-left:4px;border:1px solid ${TEAL[200]}">Tất cả đã xử lý</span>`}
+      </div>
+      <div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px">
+        ${alertList.map(a => {
+        const s = as[a.type]; return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:${a.done ? "#f9fafb" : s.bg};border:1px solid ${a.done ? "#e5e7eb" : s.border};border-radius:7px;transition:all .15s;opacity:${a.done ? 0.6 : 1}">
+          <span style="width:8px;height:8px;border-radius:50%;background:${a.done ? "#9ca3af" : s.dot};flex-shrink:0"></span>
+          <div style="flex:1">
+            <div style="font-size:12.5px;color:${a.done ? "#9ca3af" : "#374151"};font-weight:${a.done ? 400 : 500};text-decoration:${a.done ? "line-through" : "none"}">${a.label}</div>
+          </div>
+          <span style="font-size:12px;font-weight:700;color:${a.done ? "#9ca3af" : s.text};background:#fff;padding:2px 9px;border-radius:8px;border:1px solid ${a.done ? "#e5e7eb" : s.border};flex-shrink:0">${a.count} lead${a.count > 1 ? "s" : ""}</span>
+          ${a.done ? `<span style="font-size:11px;color:${TEAL[600]};font-weight:600;flex-shrink:0;display:flex;align-items:center;gap:3px;min-width:56px">${svg.check(TEAL[600], 10)} Xong</span>` : `<button data-openalert="${a.id}" style="padding:5px 12px;border:1px solid ${s.border};border-radius:5px;background:#fff;font-size:11.5px;cursor:pointer;color:${s.text};font-weight:600;flex-shrink:0;display:flex;align-items:center;gap:5px;white-space:nowrap">${svg.arrow(s.text)} Xử lý</button>`}
+        </div>`;
+      }).join("")}
+      </div>
+    </div>
+    <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden">
+      <div style="padding:12px 16px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;gap:6px">
+        ${svg.trophy(TEAL[600], 13)}
+        <span style="font-size:13px;font-weight:600;color:#374151">Leaderboard tư vấn viên</span>
+        <span style="font-size:11.5px;color:#9ca3af;margin-left:auto">Mùa tuyển sinh 2026</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:${SLATE[50]};border-bottom:1px solid #f0f0f0">
+          ${["Hạng", "Tư vấn viên", "Leads xử lý", "Hồ sơ nộp", "SV Nhập học", "Tỷ lệ", "Hiệu suất"].map(h => `<th style="padding:9px 14px;text-align:left;font-size:10.5px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">${h}</th>`).join("")}
+        </tr></thead>
+        <tbody>
+          ${ADM_COUNSELORS.map((c, i) => {
+        const rank = [{ bg: "#fef3c7", color: "#92400e", l: "#1" }, { bg: SLATE[100], color: SLATE[600], l: "#2" }, { bg: "#fff7ed", color: "#c2410c", l: "#3" }][i] || { bg: "#f9fafb", color: "#6b7280", l: `#${i + 1}` };
+        const barPct = Math.round(c.enrolled / ADM_COUNSELORS[0].enrolled * 100);
+        return `<tr style="border-bottom:1px solid #f5f5f5" onmouseenter="this.style.background='${TEAL[50]}'" onmouseleave="this.style.background='#fff'">
+              <td style="padding:11px 14px"><span style="width:24px;height:24px;border-radius:50%;background:${rank.bg};color:${rank.color};font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center">${rank.l}</span></td>
+              <td style="padding:11px 14px"><div style="display:flex;align-items:center;gap:8px">${avatar(c.name, 26)}<span style="font-size:12.5px;font-weight:600;color:#111">${c.name}</span></div></td>
+              <td style="padding:11px 14px;font-size:13px;font-weight:600;color:#374151">${c.leads}</td>
+              <td style="padding:11px 14px;font-size:13px;font-weight:600;color:#374151">${c.files}</td>
+              <td style="padding:11px 14px"><span style="font-size:16px;font-weight:800;color:${TEAL[700]}">${c.enrolled}</span></td>
+              <td style="padding:11px 14px"><span style="font-size:13px;font-weight:700;color:${TEAL[600]}">${c.rate}%</span></td>
+              <td style="padding:11px 14px;min-width:110px"><div style="display:flex;align-items:center;gap:6px">${admbar(barPct, TEAL[600], 7)}<span style="font-size:10.5px;color:#9ca3af;flex-shrink:0">${barPct}%</span></div></td>
+            </tr>`;
+      }).join("")}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+    }
+
+    // ─── Alert Panel ─────────────────────────────────────────────────────────────
+    function renderAlertPanel() {
+      const alertId = state.openAlert;
+      const alert = ADM_ALERTS.find(a => a.id === alertId);
+      if (!alert) return "";
+      const as = { danger: { dot: "#dc2626", bg: "#fff1f0", border: "#fecaca", text: "#dc2626" }, warn: { dot: "#d97706", bg: "#fffbeb", border: "#fde68a", text: "#92400e" }, info: { dot: TEAL[600], bg: TEAL[50], border: TEAL[200], text: TEAL[700] } };
+      const sty = as[alert.type];
+      const resolved = state.alertResolvedItems;
+      const selected = state.alertSelected;
+      const leads1 = ALERT_LEADS[1]; const leads2 = ALERT_LEADS[2]; const leads3 = ALERT_LEADS[3]; const leads4 = ALERT_LEADS[4];
+      const resolvedCount = resolved.length;
+      return `<div id="alertPanelBg" onclick="closeAlertPanel(event)" style="position:fixed;inset:0;background:rgba(15,23,42,0.45);z-index:900;display:flex;align-items:center;justify-content:center;padding:24px">
+    <div onclick="event.stopPropagation()" style="width:640px;max-width:100%;max-height:86vh;background:#fff;display:flex;flex-direction:column;border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,0.22);z-index:901;overflow:hidden;animation:modalIn .2s cubic-bezier(.4,0,.2,1)">
+      <div style="padding:14px 18px;border-bottom:1px solid #f0f0f0;display:flex;align-items:flex-start;gap:10px;flex-shrink:0">
+        <div style="width:34px;height:34px;border-radius:8px;background:${sty.bg};border:1px solid ${sty.border};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <span style="width:9px;height:9px;border-radius:50%;background:${sty.dot};display:inline-block"></span>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13.5px;font-weight:700;color:#111;margin-bottom:2px">${alert.label}</div>
+          <div style="font-size:11.5px;color:#9ca3af">${alert.count} leads cần xử lý ${resolvedCount > 0 ? `· <span style="color:${TEAL[600]};font-weight:600">${resolvedCount} đã xử lý</span>` : ""}</div>
+        </div>
+        <button onclick="state.openAlert=null;render()" style="padding:5px;border:none;background:transparent;cursor:pointer;color:#9ca3af;border-radius:4px">${svg.x()}</button>
+      </div>
+      ${alert.id === 1 ? renderAlert1(leads1, resolved, selected, sty) : ""}
+      ${alert.id === 2 ? renderAlert2(leads2, resolved, selected, sty) : ""}
+      ${alert.id === 3 ? renderAlert3(leads3, resolved, sty) : ""}
+      ${alert.id === 4 ? renderAlert4(leads4, resolved, selected, sty) : ""}
+    </div>
+  </div>`;
+    }
+    function alertActionBtn(onClick, label, color = "#fff", bg, border) {
+      bg = bg || TEAL[600]; border = border || TEAL[200];
+      return `<button onclick="${onClick}" style="padding:3px 9px;font-size:11px;border:1px solid ${border};border-radius:5px;background:${bg};color:${color};cursor:pointer;font-weight:500;display:inline-flex;align-items:center;gap:4px">${label}</button>`;
+    }
+    function renderAlert1(leads, resolved, selected, sty) {
+      return `
+    <div style="padding:9px 16px;border-bottom:1px solid #f0f0f0;background:${SLATE[50]};flex-shrink:0;display:flex;align-items:center;gap:8px">
+      <input type="checkbox" ${selected.length === leads.length ? "checked" : ""} onchange="alertSelectAll(1,this.checked)" style="cursor:pointer">
+      <span style="font-size:11.5px;color:#6b7280">${selected.length > 0 ? selected.length + " đã chọn" : "Chọn tất cả"}</span>
+      ${selected.length > 0 ? `<select id="alertAssign" style="padding:3px 7px;border:1px solid #e5e7eb;border-radius:5px;font-size:11.5px;outline:none"><option value="">Phân công...</option>${ASSIGNEES.map(a => `<option>${a}</option>`).join("")}</select>${alertActionBtn(`alertMarkResolved([${selected.join(",")}])`, svg.check("#fff", 11) + " Liên hệ ngay (" + selected.length + ")", "#fff", TEAL[600], TEAL[600])}` : ""}
+      <span style="margin-left:auto;font-size:11px;color:#9ca3af">${leads.filter(l => !resolved.includes(l.id)).length} chờ xử lý</span>
+    </div>
+    <div style="flex:1;overflow-y:auto">
+      ${leads.map(lead => {
+        const done = resolved.includes(lead.id); const sel = selected.includes(lead.id); return `<div style="display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid #f5f5f5;transition:background .1s;background:${done ? "#f9fafb" : sel ? TEAL[50] : "#fff"};opacity:${done ? 0.55 : 1}"
+        onmouseenter="if(!${done})this.style.background='${TEAL[50]}'" onmouseleave="if(!${done}&&!${sel})this.style.background='#fff'">
+        <input type="checkbox" ${sel ? "checked" : ""} ${done ? "disabled" : ""} onchange="alertToggleSelect(${lead.id})" style="cursor:pointer">
+        ${avatar(lead.name, 28)}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;font-weight:600;color:#111;margin-bottom:1px">${lead.name}</div>
+          <div style="font-size:11px;color:#9ca3af;display:flex;gap:8px"><span>${lead.phone}</span><span style="color:${TEAL[600]}">${lead.major}</span></div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:11.5px;font-weight:700;color:#dc2626;margin-bottom:3px">${lead.hours}h chưa liên hệ</div>
+          <div style="font-size:10.5px;color:#9ca3af">${lead.assignee || '<span style="color:#dc2626">Chưa phân công</span>'}</div>
+        </div>
+        ${!done ? `<div style="display:flex;gap:5px;flex-shrink:0">${alertActionBtn(`alertMarkResolved([${lead.id}])`, svg.phone(TEAL[600], 11) + " Gọi", TEAL[600], TEAL[50], TEAL[200])}${alertActionBtn(`alertMarkResolved([${lead.id}])`, svg.msg(TEAL[700], 11) + " Nhắn", TEAL[700], TEAL[50], TEAL[200])}</div>` : `<span style="font-size:10.5px;color:${TEAL[600]};font-weight:600;flex-shrink:0;display:flex;align-items:center;gap:3px">${svg.check(TEAL[600], 11)} Xong</span>`}
+      </div>`}).join("")}
+    </div>
+    <div style="padding:12px 16px;border-top:1px solid #f0f0f0;flex-shrink:0">
+      <textarea placeholder="Ghi chú nhanh cho nhóm xử lý..." rows="2" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;resize:none;outline:none;box-sizing:border-box;color:#374151"></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px;gap:8px">
+        <button onclick="state.openAlert=null;render()" style="padding:6px 14px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;color:#6b7280">Đóng</button>
+        <button onclick="alertMarkResolved(${JSON.stringify(leads.map(l => l.id))});render()" style="padding:6px 14px;border:none;border-radius:6px;background:${TEAL[600]};font-size:12px;cursor:pointer;color:#fff;font-weight:600">Đánh dấu tất cả đã xử lý</button>
+      </div>
+    </div>`;
+    }
+    function renderAlert2(leads, resolved, selected, sty) {
+      return `
+    <div style="padding:9px 16px;border-bottom:1px solid #f0f0f0;background:${SLATE[50]};flex-shrink:0;display:flex;align-items:center;gap:8px">
+      <input type="checkbox" ${selected.length === leads.length ? "checked" : ""} onchange="alertSelectAll(2,this.checked)" style="cursor:pointer">
+      <span style="font-size:11.5px;color:#6b7280">${selected.length > 0 ? selected.length + " đã chọn" : "Chọn tất cả"}</span>
+      ${selected.length > 0 ? `<select style="padding:3px 7px;border:1px solid #e5e7eb;border-radius:5px;font-size:11.5px;outline:none"><option value="">Phân công tư vấn...</option>${ASSIGNEES.map(a => `<option>${a}</option>`).join("")}</select>${alertActionBtn(`alertMarkResolved([${selected.join(",")}])`, svg.check("#fff", 11) + " Assign (" + selected.length + ")", "#fff", TEAL[600], TEAL[600])}` : ""}
+      <span style="margin-left:auto;font-size:11px;color:#9ca3af">${leads.filter(l => !resolved.includes(l.id)).length} chờ tư vấn</span>
+    </div>
+    <div style="flex:1;overflow-y:auto">
+      ${leads.map(lead => {
+        const done = resolved.includes(lead.id); const sel = selected.includes(lead.id); return `<div style="display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid #f5f5f5;background:${done ? "#f9fafb" : sel ? TEAL[50] : "#fff"};opacity:${done ? 0.55 : 1}"
+        onmouseenter="if(!${done})this.style.background='${TEAL[50]}'" onmouseleave="if(!${done}&&!${sel})this.style.background='#fff'">
+        <input type="checkbox" ${sel ? "checked" : ""} ${done ? "disabled" : ""} onchange="alertToggleSelect(${lead.id})" style="cursor:pointer">
+        ${avatar(lead.name, 28)}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;font-weight:600;color:#111;margin-bottom:1px">${lead.name}</div>
+          <div style="font-size:11px;color:#9ca3af;display:flex;gap:8px"><span>${lead.phone}</span><span style="color:${TEAL[600]}">${lead.major}</span></div>
+          <div style="font-size:10.5px;color:#6b7280;margin-top:2px">Hành động cuối: ${lead.lastAction}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-right:8px">
+          <div style="background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;padding:2px 7px;border-radius:8px;display:inline-block">Score: ${lead.score}</div>
+          <div style="font-size:10.5px;color:${lead.assignee ? "#9ca3af" : "#dc2626"};margin-top:3px">${lead.assignee || "Chưa phân công"}</div>
+        </div>
+        ${!done ? alertActionBtn(`alertMarkResolved([${lead.id}])`, `Tư vấn ngay`, "#fff", TEAL[600], TEAL[700]) : `<span style="font-size:10.5px;color:${TEAL[600]};font-weight:600;display:flex;align-items:center;gap:3px">${svg.check(TEAL[600], 11)} Xong</span>`}
+      </div>`}).join("")}
+    </div>
+    <div style="padding:12px 16px;border-top:1px solid #f0f0f0;flex-shrink:0;display:flex;justify-content:flex-end;gap:8px">
+      <button onclick="state.openAlert=null;render()" style="padding:6px 14px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;color:#6b7280">Đóng</button>
+      <button onclick="alertMarkResolved(${JSON.stringify(leads.map(l => l.id))});render()" style="padding:6px 14px;border:none;border-radius:6px;background:${TEAL[600]};font-size:12px;cursor:pointer;color:#fff;font-weight:600">Assign tất cả</button>
+    </div>`;
+    }
+    function renderAlert3(camps, resolved, sty) {
+      return `
+    <div style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px">
+      ${camps.map(camp => {
+        const done = resolved.includes(camp.id); return `<div style="background:${done ? "#f9fafb" : "#fff"};border:1px solid ${done ? TEAL[200] : "#e5e7eb"};border-radius:8px;padding:14px 16px;opacity:${done ? 0.7 : 1}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:700;color:#111">${camp.label}</div>
+          ${done ? `<span style="font-size:11px;color:${TEAL[600]};font-weight:600;display:flex;align-items:center;gap:3px">${svg.check(TEAL[600], 10)} Đã xử lý</span>` : `<span style="background:#fee2e2;color:#dc2626;font-size:11px;font-weight:600;padding:2px 7px;border-radius:7px">Cần cải thiện</span>`}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+          ${[{ l: "Tổng leads", v: camp.leads }, { l: "Chuyển đổi", v: camp.converted }, { l: "Tỷ lệ", v: camp.rate }, { l: "CPL", v: (camp.cpl / 1000) + "k ₫" }].map(s => `<div style="background:${SLATE[50]};border-radius:6px;padding:8px 10px"><div style="font-size:10px;color:#9ca3af;margin-bottom:3px">${s.l}</div><div style="font-size:14px;font-weight:700;color:${TEAL[700]}">${s.v}</div></div>`).join("")}
+        </div>
+        ${!done ? `<div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${alertActionBtn(`alertMarkResolved(['${camp.id}'])`, `Tối ưu ngân sách`, "#fff", TEAL[600], TEAL[700])}
+          ${alertActionBtn(`alertMarkResolved(['${camp.id}'])`, `Điều chỉnh targeting`, TEAL[700], TEAL[50], TEAL[200])}
+          ${alertActionBtn(`alertMarkResolved(['${camp.id}'])`, `Tạm dừng chiến dịch`, "#92400e", "#fef3c7", "#fde68a")}
+        </div>`: ""}
+      </div>`}).join("")}
+    </div>
+    <div style="padding:12px 16px;border-top:1px solid #f0f0f0;flex-shrink:0;display:flex;justify-content:flex-end">
+      <button onclick="state.openAlert=null;render()" style="padding:6px 16px;border:none;border-radius:6px;background:${TEAL[600]};font-size:12px;cursor:pointer;color:#fff;font-weight:600">Đóng</button>
+    </div>`;
+    }
+    function renderAlert4(leads, resolved, selected, sty) {
+      return `
+    <div style="padding:9px 16px;border-bottom:1px solid #f0f0f0;background:${SLATE[50]};flex-shrink:0;display:flex;align-items:center;gap:8px">
+      <input type="checkbox" ${selected.length === leads.length ? "checked" : ""} onchange="alertSelectAll(4,this.checked)" style="cursor:pointer">
+      <span style="font-size:11.5px;color:#6b7280">${selected.length > 0 ? selected.length + " đã chọn" : "Chọn tất cả"}</span>
+      ${selected.length > 0 ? alertActionBtn(`alertMarkResolved([${selected.join(",")}])`, svg.check("#fff", 11) + " Duyệt hồ sơ (" + selected.length + ")", "#fff", "#d97706", "#d97706") : ""}
+      <span style="margin-left:auto;font-size:11px;color:#9ca3af">${leads.filter(l => !resolved.includes(l.id)).length} chờ duyệt</span>
+    </div>
+    <div style="flex:1;overflow-y:auto">
+      ${leads.map(lead => {
+        const done = resolved.includes(lead.id); const sel = selected.includes(lead.id); const urgent = lead.waitHours >= 72; return `<div style="display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid #f5f5f5;background:${done ? "#f9fafb" : sel ? "#fffbeb" : "#fff"};opacity:${done ? 0.55 : 1}"
+        onmouseenter="if(!${done})this.style.background='#fffbeb'" onmouseleave="if(!${done}&&!${sel})this.style.background='#fff'">
+        <input type="checkbox" ${sel ? "checked" : ""} ${done ? "disabled" : ""} onchange="alertToggleSelect(${lead.id})" style="cursor:pointer">
+        ${avatar(lead.name, 28)}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;font-weight:600;color:#111;margin-bottom:1px">${lead.name}</div>
+          <div style="font-size:11px;color:#9ca3af;display:flex;gap:8px"><span>${lead.phone}</span><span style="color:${TEAL[600]}">${lead.major}</span><span>Nộp: ${lead.submitted}</span></div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-right:8px">
+          <div style="font-size:11.5px;font-weight:700;color:${urgent ? "#dc2626" : "#d97706"};margin-bottom:2px">${lead.waitHours}h chờ</div>
+          <div style="font-size:10.5px;color:#9ca3af">${lead.assignee}</div>
+        </div>
+        ${!done ? `<div style="display:flex;gap:5px">${alertActionBtn(`alertMarkResolved([${lead.id}])`, `Duyệt`, "#fff", "#d97706", "#d97706")}${alertActionBtn(`alertMarkResolved([${lead.id}])`, `Từ chối`, "#dc2626", "#fff1f0", "#fecaca")}</div>` : `<span style="font-size:10.5px;color:${TEAL[600]};font-weight:600;display:flex;align-items:center;gap:3px">${svg.check(TEAL[600], 11)} Xong</span>`}
+      </div>`}).join("")}
+    </div>
+    <div style="padding:12px 16px;border-top:1px solid #f0f0f0;flex-shrink:0;display:flex;justify-content:flex-end;gap:8px">
+      <button onclick="state.openAlert=null;render()" style="padding:6px 14px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;color:#6b7280">Đóng</button>
+      <button onclick="alertMarkResolved(${JSON.stringify(leads.map(l => l.id))});render()" style="padding:6px 14px;border:none;border-radius:6px;background:#d97706;font-size:12px;cursor:pointer;color:#fff;font-weight:600">Duyệt tất cả</button>
+    </div>`;
+    }
+
+    // ─── Event binding ────────────────────────────────────────────────────────────
+    function bindEvents() {
+      // Sidebar
+      document.querySelectorAll("[data-sidebar]").forEach(el => el.addEventListener("click", e => { state.activeSidebar = el.dataset.sidebar; render(); }));
+      // Nav
+      document.querySelectorAll("[data-nav]").forEach(el => el.addEventListener("click", e => { state.activeLeadView = el.dataset.nav; if (el.dataset.nav !== "unassigned") state.activeFunnel = null; render(); }));
+      // Toggle sections
+      document.querySelectorAll("[data-toggle]").forEach(el => el.addEventListener("click", e => { const k = el.dataset.toggle + "Open"; state[k] = !state[k]; render(); }));
+      // Funnels
+      document.querySelectorAll("[data-funnel]").forEach(el => el.addEventListener("click", e => { state.activeFunnel = el.dataset.funnel; state.activeLeadView = "funnel"; render(); }));
+      // Campaigns
+      document.querySelectorAll("[data-campaign]").forEach(el => el.addEventListener("click", e => { state.activeLeadView = "campaign_" + el.dataset.campaign; render(); }));
+      // View mode
+      document.querySelectorAll("[data-view]").forEach(el => el.addEventListener("click", e => { state.viewMode = el.dataset.view; render(); }));
+      // Search
+      const srch = document.getElementById("mainSearch");
+      if (srch) srch.addEventListener("input", e => { state.search = e.target.value; render(); });
+      // Add lead btn(s)
+      document.querySelectorAll("#btnAddLead").forEach(el => el.addEventListener("click", e => { state.showAddModal = true; render(); }));
+      // Kanban cards
+      document.querySelectorAll("[data-leadcard]").forEach(el => el.addEventListener("click", e => { const lead = state.leads.find(l => l.id === parseInt(el.dataset.leadcard)); if (lead) { state.selectedLead = lead; state.modalForm = { ...lead, quality: lead.quality || "normal" }; state.modalNotes = lead.notes || []; state.modalTasks = []; state.modalTab = "customer"; state.modalRightTab = "info"; render(); } }));
+      // Table rows
+      document.querySelectorAll("[data-leadrow]").forEach(el => el.addEventListener("click", e => { const lead = state.leads.find(l => l.id === parseInt(el.dataset.leadrow)); if (lead) { state.selectedLead = lead; state.modalForm = { ...lead, quality: lead.quality || "normal" }; state.modalNotes = lead.notes || []; state.modalTasks = []; state.modalTab = "customer"; state.modalRightTab = "info"; render(); } }));
+      // Assign dropdown in unassigned
+      document.querySelectorAll("[data-assign]").forEach(el => el.addEventListener("change", e => { if (!e.target.value) return; const id = parseInt(el.dataset.assign); state.leads = state.leads.map(l => l.id === id ? { ...l, assignee: e.target.value } : l); render(); }));
+      // Modal
+      const mc = document.getElementById("modalClose"); if (mc) mc.addEventListener("click", () => { state.selectedLead = null; render(); });
+      const mcn = document.getElementById("modalCancel"); if (mcn) mcn.addEventListener("click", () => { state.selectedLead = null; render(); });
+      const mcs = document.getElementById("modalSave"); if (mcs) mcs.addEventListener("click", () => { saveModal(); });
+      const mb = document.getElementById("leadModalBg"); if (mb) mb.addEventListener("click", e => { if (e.target === mb) { state.selectedLead = null; render(); } });
+      document.querySelectorAll("[data-modaltab]").forEach(el => el.addEventListener("click", e => { state.modalTab = el.dataset.modaltab; render(); }));
+      document.querySelectorAll("[data-modalright]").forEach(el => el.addEventListener("click", e => { state.modalRightTab = el.dataset.modalright; render(); }));
+      document.querySelectorAll("[data-setstage]").forEach(el => el.addEventListener("click", e => { if (state.modalForm) { state.modalForm.status = el.dataset.setstage; state.leads = state.leads.map(l => l.id === state.selectedLead.id ? { ...l, status: el.dataset.setstage } : l); render(); } }));
+      const an = document.getElementById("addNote"); if (an) an.addEventListener("click", addNote);
+      const nt = document.getElementById("newNote"); if (nt) nt.addEventListener("keydown", e => { if (e.key === "Enter") addNote(); });
+      const at = document.getElementById("addTask"); if (at) at.addEventListener("click", addTask);
+      const nTask = document.getElementById("newTask"); if (nTask) nTask.addEventListener("keydown", e => { if (e.key === "Enter") addTask(); });
+      document.querySelectorAll("[data-tasktoggle]").forEach(el => el.addEventListener("change", e => { const i = parseInt(el.dataset.tasktoggle); state.modalTasks = state.modalTasks.map((t, j) => j === i ? { ...t, done: !t.done } : t); render(); }));
+      document.querySelectorAll("[data-taskdel]").forEach(el => el.addEventListener("click", e => { const i = parseInt(el.dataset.taskdel); state.modalTasks = state.modalTasks.filter((_, j) => j !== i); render(); }));
+      // Add modal
+      const amc = document.getElementById("addModalClose"); if (amc) amc.addEventListener("click", () => { state.showAddModal = false; render(); });
+      const amcn = document.getElementById("addModalCancel"); if (amcn) amcn.addEventListener("click", () => { state.showAddModal = false; render(); });
+      const ams = document.getElementById("addModalSubmit"); if (ams) ams.addEventListener("click", () => handleAddLead(false));
+      const amcall = document.getElementById("addModalCall"); if (amcall) amcall.addEventListener("click", () => handleAddLead(true));
+      const amBg = document.getElementById("addModalBg"); if (amBg) amBg.addEventListener("click", e => { if (e.target === amBg) { state.showAddModal = false; render(); } });
+      // Campaign
+      document.querySelectorAll("[data-camptab]").forEach(el => el.addEventListener("click", e => { state.campTab = el.dataset.camptab; render(); }));
+      document.querySelectorAll("[data-campflowtoggle]").forEach(el => el.addEventListener("click", e => { const id = parseInt(el.dataset.campflowtoggle); state.campFlows = state.campFlows.map(f => f.id === id ? { ...f, status: f.status === "active" ? "paused" : "active" } : f); render(); }));
+      const cfa = document.getElementById("campFilterAssignee"); if (cfa) cfa.addEventListener("change", e => { state.campFilterAssignee = e.target.value; render(); });
+      const cfs = document.getElementById("campFilterSource"); if (cfs) cfs.addEventListener("change", e => { state.campFilterSource = e.target.value; render(); });
+      // Admission
+      document.querySelectorAll("[data-admtab]").forEach(el => el.addEventListener("click", e => { state.admTab = el.dataset.admtab; render(); }));
+      document.querySelectorAll("[data-admflowtoggle]").forEach(el => el.addEventListener("click", e => { const id = parseInt(el.dataset.admflowtoggle); state.admFlows = state.admFlows.map(f => f.id === id ? { ...f, status: f.status === "active" ? "paused" : "active" } : f); render(); }));
+      // Alert open
+      document.querySelectorAll("[data-openalert]").forEach(el => el.addEventListener("click", e => { state.openAlert = parseInt(el.dataset.openalert); state.alertResolvedItems = []; state.alertSelected = []; render(); }));
+    }
+
+    // ─── Drag & Drop ──────────────────────────────────────────────────────────────
+    function onCardDragStart(e, id) { state.dragId = id; e.dataTransfer.effectAllowed = "move"; }
+    function onStageDragOver(e, id) { e.preventDefault(); if (state.dragOverStage !== id) { state.dragOverStage = id; document.querySelectorAll("[data-stage]").forEach(el => { const isOver = el.dataset.stage === id; const zone = el.querySelector("div:last-child"); if (zone) { zone.style.background = isOver ? TEAL[50] : "transparent"; zone.style.border = `1.5px dashed ${isOver ? TEAL[400] : "transparent"}`; } }); } }
+    function onStageDragLeave() { state.dragOverStage = null; document.querySelectorAll("[data-stage]").forEach(el => { const zone = el.querySelector("div:last-child"); if (zone) { zone.style.background = "transparent"; zone.style.border = "1.5px dashed transparent"; } }); }
+    function onStageDrop(e, id) { e.preventDefault(); if (state.dragId != null) { state.leads = state.leads.map(l => l.id === state.dragId ? { ...l, status: id } : l); state.dragId = null; state.dragOverStage = null; render(); } }
+    function onCampCardDragStart(e, id) { state.campDragId = id; e.dataTransfer.effectAllowed = "move"; }
+    function onCampStageDragOver(e, id) { e.preventDefault(); state.campDragOver = id; }
+    function onCampStageDragLeave() { state.campDragOver = null; }
+    function onCampStageDrop(e, id) { e.preventDefault(); if (state.campDragId) { state.campLeads = state.campLeads.map(l => l.id === state.campDragId ? { ...l, status: id } : l); state.campDragId = null; state.campDragOver = null; render(); } }
+
+    // ─── Action handlers ──────────────────────────────────────────────────────────
+    function addNote() { const el = document.getElementById("newNote"); if (!el || !el.value.trim()) return; state.modalNotes = [{ text: el.value.trim(), time: new Date().toLocaleString("vi-VN"), author: "Admin" }, ...state.modalNotes]; render(); }
+    function addTask() { const el = document.getElementById("newTask"); if (!el || !el.value.trim()) return; state.modalTasks = [...state.modalTasks, { text: el.value.trim(), done: false }]; render(); }
+    function saveModal() {
+      if (!state.modalForm) return;
+      const name = document.getElementById("mf_name")?.value || state.modalForm.name;
+      const phone = document.getElementById("mf_phone")?.value || state.modalForm.phone;
+      const email = document.getElementById("mf_email")?.value || state.modalForm.email;
+      const province = document.getElementById("mf_province")?.value || state.modalForm.province;
+      const address = document.getElementById("mf_address")?.value || state.modalForm.address;
+      const expRev = parseInt(document.getElementById("mf_expectedRevenue")?.value) || state.modalForm.expectedRevenue;
+      const assignee = document.getElementById("modalAssignee")?.value || state.modalForm.assignee;
+      const gender = document.querySelector("[name=modal_gender]:checked")?.value || state.modalForm.gender;
+      const updated = { ...state.modalForm, name, phone, email, province, address, expectedRevenue: expRev, assignee, gender, notes: state.modalNotes };
+      state.leads = state.leads.map(l => l.id === updated.id ? updated : l);
+      state.selectedLead = null; render();
+    }
+    function handleAddLead(callNow = false) {
+      const nl = state.newLead;
+      const name = document.getElementById("nl_name")?.value || "";
+      const phone = document.getElementById("nl_phone")?.value || "";
+      if (!name || !phone) {
+        alert("Vui lòng nhập Họ tên và Số điện thoại hợp lệ.");
+        return;
+      }
+
+      // Tags parse
+      let tgsRaw = document.getElementById("nl_tags")?.value || "";
+      let tags = tgsRaw.split(",").map(t => t.trim()).filter(t => t);
+
+      const assig = document.getElementById("nl_assignee")?.value === "auto" ? ASSIGNEES[Math.floor(Math.random() * ASSIGNEES.length)] : (document.getElementById("nl_assignee")?.value || ASSIGNEES[0]);
+
+      const lead = {
+        name, phone,
+        email: document.getElementById("nl_email")?.value || "",
+        school: "",
+        source: document.getElementById("nl_source")?.value || SOURCES[0],
+        major: document.getElementById("nl_major")?.value || MAJORS[0],
+        assignee: assig,
+        province: document.getElementById("nl_province")?.value || "",
+        address: "",
+        gender: document.getElementById("nl_gender")?.value || "Khác",
+        id: Date.now(),
+        code: mkId(),
+        status: document.getElementById("nl_status")?.value || "new",
+        score: 85,
+        createdAt: new Date().toLocaleString("vi-VN"),
+        notes: [
+          { text: "Tự động tạo task Gọi tư vấn lần 1 sau 15 phút.", time: new Date().toLocaleString("vi-VN"), author: "System Automation" },
+          { text: "Tự động gửi SMS chào mừng và Email brochure.", time: new Date().toLocaleString("vi-VN"), author: "System Automation" }
+        ],
+        tags: tags,
+        expectedRevenue: 0, revenue: 0, orders: 0, rfm: 0, membership: "-"
+      };
+
+      state.leads = [lead, ...state.leads];
+      state.showAddModal = false;
+      state.newLead = { name: "", phone: "", email: "", source: "Facebook", major: "Công nghệ thông tin", school: "", gender: "Khác", province: "", address: "", assignee: "auto", expectedRevenue: "" };
+
+      if (callNow) {
+        // Kích hoạt mô phỏng gọi điện ngay và xem chi tiết
+        state.selectedLead = lead;
+        state.modalForm = { ...lead, quality: "normal" };
+        state.modalNotes = lead.notes || [];
+        state.modalTasks = [];
+        state.modalTab = "customer";
+        state.modalRightTab = "info";
+        alert(`Đang mở giao diện kết nối gọi điện cho ${lead.name} (${lead.phone})...`);
+      }
+
+      render();
+    }
+    function closeAlertPanel(e) { if (e.target === e.currentTarget) { state.openAlert = null; render(); } }
+    function alertToggleSelect(id) { const s = state.alertSelected; state.alertSelected = s.includes(id) ? s.filter(x => x !== id) : [...s, id]; render(); }
+    function alertSelectAll(alertId, checked) {
+      const leads = ALERT_LEADS[alertId];
+      state.alertSelected = checked ? leads.map(l => l.id) : []; render();
+    }
+    function alertMarkResolved(ids) {
+      ids.forEach(id => { if (!state.alertResolvedItems.includes(id)) state.alertResolvedItems.push(id); });
+      state.alertSelected = [];
+      // Update resolved alerts badge
+      const alertId = state.openAlert;
+      const total = ALERT_LEADS[alertId]?.length || 1;
+      if (state.alertResolvedItems.length >= total) {
+        if (!state.resolvedAlerts.includes(alertId)) state.resolvedAlerts.push(alertId);
+      }
+      render();
+    }
+
+    // ─── Init ─────────────────────────────────────────────────────────────────────
+    render();
+  </script>
+</body>
+
+</html>
